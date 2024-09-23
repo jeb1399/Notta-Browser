@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>UB Browser Settings</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Arial, sans-serif;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            padding: 20px;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+
+        .settings-section {
+            padding: 10px;
+            border-bottom: 1px solid #ccc;
+        }
+
+        input[type="range"], input[type="number"], select {
+            width: 100%;
+        }
+
+        button {
+            margin-top: 10px;
+            padding: 5px 10px;
+            background-color: #f1f1f1;
+            border: none;
+            cursor: pointer;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="settings-section">
+        <label for="zoomLevel">Zoom Level:</label>
+        <input type="range" min="50" max="200" step="10" value="100" id="zoomLevel">
+        <input type="number" min="50" max="200" step="10" value="100" id="zoomLevelNumber">
+    </div>
+
+    <div class="settings-section">
+        <label for="homepage">Homepage:</label>
+        <input type="text" id="homepage" placeholder="Enter your homepage URL">
+    </div>
+
+    <div class="settings-section">
+        <label for="searchEngine">Default Search Engine:</label>
+        <select id="searchEngine">
+            <option value="google">Google</option>
+            <option value="bing">Bing</option>
+            <option value="duckduckgo">DuckDuckGo</option>
+            <option value="yahoo">Yahoo</option>
+        </select>
+    </div>
+
+    <div class="settings-section">
+        <label for="privacyLevel">Privacy Level:</label>
+        <select id="privacyLevel">
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+        </select>
+    </div>
+
+    <div class="settings-section">
+        <label for="blockPopups">Block Pop-ups:</label>
+        <input type="checkbox" id="blockPopups" checked>
+    </div>
+
+    <div class="settings-section">
+        <label for="clearCache">Clear Cache on Exit:</label>
+        <input type="checkbox" id="clearCache">
+    </div>
+
+    <div class="settings-section">
+        <label for="enableCookies">Enable Cookies:</label>
+        <input type="checkbox" id="enableCookies" checked>
+    </div>
+
+    <div class="settings-section">
+        <label for="fontSize">Font Size:</label>
+        <input type="range" min="10" max="30" step="1" value="16" id="fontSize">
+        <input type="number" min="10" max="30" step="1" value="16" id="fontSizeNumber">
+    </div>
+
+    <button id="save">Save Settings</button>
+</div>
+
+<script>
+    function saveSettings() {
+        const zoomLevel = document.getElementById("zoomLevel").value;
+        document.cookie = `zoomLevel=${zoomLevel}; path=/`;
+        
+        const homepage = document.getElementById("homepage").value;
+        document.cookie = `homepage=${homepage}; path=/`;
+
+        const searchEngine = document.getElementById("searchEngine").value;
+        document.cookie = `searchEngine=${searchEngine}; path=/`;
+
+        const privacyLevel = document.getElementById("privacyLevel").value;
+        document.cookie = `privacyLevel=${privacyLevel}; path=/`;
+
+        const blockPopups = document.getElementById("blockPopups").checked;
+        document.cookie = `blockPopups=${blockPopups}; path=/`;
+
+        const clearCache = document.getElementById("clearCache").checked;
+        document.cookie = `clearCache=${clearCache}; path=/`;
+
+        const enableCookies = document.getElementById("enableCookies").checked;
+        document.cookie = `enableCookies=${enableCookies}; path=/`;
+
+        const fontSize = document.getElementById("fontSize").value;
+        document.cookie = `fontSize=${fontSize}; path=/`;
+    }
+
+    function initSettings() {
+        const cookies = document.cookie.split(';');
+        for (const cookie of cookies) {
+            const [name, value] = cookie.trim().split('=');
+            switch (name) {
+                case 'zoomLevel':
+                    document.getElementById("zoomLevel").value = value;
+                    document.getElementById("zoomLevelNumber").value = value;
+                    break;
+                case 'homepage':
+                    document.getElementById("homepage").value = value;
+                    break;
+                case 'searchEngine':
+                    document.getElementById("searchEngine").value = value;
+                    break;
+                case 'privacyLevel':
+                    document.getElementById("privacyLevel").value = value;
+                    break;
+                case 'blockPopups':
+                    document.getElementById("blockPopups").checked = value === 'true';
+                    break;
+                case 'clearCache':
+                    document.getElementById("clearCache").checked = value === 'true';
+                    break;
+                case 'enableCookies':
+                    document.getElementById("enableCookies").checked = value === 'true';
+                    break;
+                case 'fontSize':
+                    document.getElementById("fontSize").value = value;
+                    document.getElementById("fontSizeNumber").value = value;
+                    break;
+            }
+        }
+    }
+
+    document.getElementById("save").addEventListener("click", saveSettings);
+
+    // Initialize settings on page load
+    initSettings();
+</script>
+</body>
+</html>
