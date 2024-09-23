@@ -187,6 +187,16 @@ document.getElementById("webview").addEventListener("load", () => {
         document.getElementById("addressBar").value = cleanedURL; // Update the address bar
         updateTabTitle(webview.contentDocument.title || "New Tab");
     }
+
+    // Intercept links to open in the browser
+    webview.contentWindow.document.body.addEventListener('click', function (e) {
+        const target = e.target.closest('a[target="_blank"], a[target="new"]');
+        if (target) {
+            e.preventDefault();
+            const newUrl = target.href;
+            createTab(newUrl); // Open in a new tab within the UB Browser
+        }
+    });
 });
 
 document.getElementById("newTab").addEventListener("click", () => createTab());
@@ -246,17 +256,6 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 });
-while (!document.getElementById("webview").src.includes("/proxy/")) {
-    document.getElementById("webview").src = window.location.origin + "/proxy/" + document.getElementById("webview").src;
-}
-//const fullProxyUrl = window.location.origin + `/proxy/`;
-//alert(fullProxyUrl);
-//setTimeout(function() {
-//    const webview = document.getElementById("webview");
-//    if (!webview.src.includes(fullProxyUrl)) {
-//        webview.src = fullProxyUrl + webview.src;
-//    }
-//}, 50000);
 </script>
 
 <!-- Settings Page -->
