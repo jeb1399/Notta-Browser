@@ -104,11 +104,6 @@ app.get('/fetch', async (req, res) => {
     res.status(500).send('Error fetching website data: ' + error.message);
   }
 });
-
 const httpServer = http.createServer(app);
-
-httpServer.listen(process.env.PORT || 8080, () => {
-  console.log("HTTP Server Running On Port:", process.env.PORT || 8080);
-});
-
+httpServer.listen(process.env.PORT || 8080, () => {console.log("HTTP Server Running On Port:", process.env.PORT || 8080);});
 httpServer.on('upgrade', unblocker.onUpgrade);
