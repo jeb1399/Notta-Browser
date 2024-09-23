@@ -1,42 +1,50 @@
 var express = require('express');
 var Unblocker = require('unblocker');
-var path = require('path');
-var fs = require('fs');
-var dns = require('dns');
+var url = require('url');
+var https = require('https');
+var http = require('http');
 var app = express();
-dns.setServers(['45.90.28.82', '45.90.30.82']);
+function handleRedirects(data) {
+  if (data.headers && data.headers.location) {
+    var location = data.headers.location;
+    var parsed = url.parse(location);
+    if (parsed.protocol && !location.startsWith(data.url.substr(0, data.url.indexOf('/', 8)))) {
+      data.headers.location = '/proxy/' + location;
+    }
+  }
+  return data;
+}
+function fetchWebsiteData(websiteUrl) {
+  return new Promise((resolve, reject) => {
+    const protocol = websiteUrl.startsWith('https') ? https : http;
+    protocol.get(websiteUrl, (res) => {
+      let data = '';
+      res.on('data', (chunk) => data += chunk);
+      res.on('end', () => resolve(data));
+    }).on('error', reject);
+  });
+}
 var unblocker = new Unblocker({
-    prefix: '/proxy/',
-    requestMiddleware: [
-        function(data, next) {
-            var filePath = path.join(__dirname, 'public', data.url.replace('/proxy/', ''));
-            fs.access(filePath, fs.constants.F_OK, (err) => {
-                if (!err) {
-                    data.clientResponse.sendFile(filePath);
-                } else {
-                    if (!data.url.startsWith('http')) {
-                        data.url = data.clientRequest.headers.referer + data.url;
-                    }
-                    next();
-                }
-            });
-        }
-    ],
-    responseMiddleware: [
-        function(data, next) {
-            if (data.contentType === 'text/html') {
-                data.stream = data.stream.replace(
-                    /(href|src|action)=("|')(?!http:\/\/|https:\/\/|\/\/|data:|#)(.*?)("|')/g,
-                    '$1=$2/proxy/$3$4'
-                );
-            }
-            next();
-        }
-    ]
+  prefix: '/proxy/',
+  responseMiddleware: [
+    handleRedirects
+  ]
 });
 app.use(unblocker);
 app.use(express.static('public'));
 app.get('/', function(req, res) {res.sendFile(__dirname + '/index.html');});
 app.get('/robots.txt', function(req, res) {res.sendFile(__dirname + '/robots.txt');});
+app.get('/fetch', async function(req, res) {
+  try {
+    const websiteUrl = req.query.url;
+    if (!websiteUrl) {
+      return res.status(400).send('URL parameter is required');
+    }
+    const data = await fetchWebsiteData(websiteUrl);
+    res.send(data);
+  } catch (error) {
+    res.status(500).send('Error fetching website data');
+  }
+});
 app.listen(process.env.PORT || 8080).on('upgrade', unblocker.onUpgrade);
 console.log("Node Unblocker Server Running On Port:", process.env.PORT || 8080);
