@@ -125,8 +125,9 @@
 const tabs = [];
 let activeTabIndex = -1;
 const proxyBaseUrl = "/proxy/";
+const homepageLink = window.location.href + "home/";
 
-function createTab(url = "/home") {
+function createTab(url = homepageLink) {
     const tab = document.createElement("div");
     tab.className = "tab";
     tab.innerHTML = `
