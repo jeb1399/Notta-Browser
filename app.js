@@ -1,7 +1,6 @@
 var express = require('express');
 var Unblocker = require('unblocker');
 var url = require('url');
-var https = require('https');
 var http = require('http');
 var app = express();
 function handleRedirects(data) {
@@ -16,7 +15,7 @@ function handleRedirects(data) {
 }
 function fetchWebsiteData(websiteUrl) {
   return new Promise((resolve, reject) => {
-    const protocol = websiteUrl.startsWith('https') ? https : http;
+    const protocol = websiteUrl.startsWith('https') ? require('https') : http;
     protocol.get(websiteUrl, (res) => {
       let data = '';
       res.on('data', (chunk) => data += chunk);
@@ -32,6 +31,12 @@ var unblocker = new Unblocker({
 });
 app.use(unblocker);
 app.use(express.static('public'));
+app.use((req, res, next) => {
+  if (req.protocol === 'https') {
+    return res.redirect('http://' + req.headers.host + req.url);
+  }
+  next();
+});
 app.get('/', function(req, res) {res.sendFile(__dirname + '/index.html');});
 app.get('/robots.txt', function(req, res) {res.sendFile(__dirname + '/robots.txt');});
 app.get('/fetch', async function(req, res) {
@@ -46,5 +51,6 @@ app.get('/fetch', async function(req, res) {
     res.status(500).send('Error fetching website data');
   }
 });
-app.listen(process.env.PORT || 8080).on('upgrade', unblocker.onUpgrade);
-console.log("Node Unblocker Server Running On Port:", process.env.PORT || 8080);
+var httpServer = http.createServer(app);
+httpServer.listen(process.env.PORT || 8080, () => {console.log("HTTP Server Running On Port:", process.env.PORT || 8080);});
+httpServer.on('upgrade', unblocker.onUpgrade);
