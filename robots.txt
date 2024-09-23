@@ -1,0 +1,4 @@
+# This file MIGHT help fix the issue of google assuming this unblocker is a phishing website
+User-agent: *
+Disallow: /proxy/
+Disallow: /proxy/*
