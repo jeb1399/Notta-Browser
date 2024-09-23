@@ -9,11 +9,15 @@
     "express",
     "unblocker",
     "proxy",
-    "node"
+    "node",
+    "nextdns"
   ],
   "dependencies": {
     "express": "^4.18.2",
-    "unblocker": "^1.0.0"
+    "unblocker": "^2.3.0",
+    "path": "^0.12.7",
+    "fs": "0.0.1-security",
+    "dns": "^0.2.2"
   },
   "engines": {
     "node": ">=14.0.0"
