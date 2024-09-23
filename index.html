@@ -1,1 +1,32 @@
 
+<!doctype html>
+<html lang=en>
+<head>
+<meta charset=UTF-8>
+<meta name=viewport content="width=device-width,initial-scale=1">
+<title>UB Browser</title>
+<style>body,html{margin:0;padding:0;font-family:Arial,sans-serif;height:100%;overflow:hidden}.browser{display:flex;flex-direction:column;height:100vh}.toolbar{display:flex;align-items:center;padding:5px;background-color:#f1f1f1}.tabs{display:flex;background-color:#e8e8e8;padding:5px 5px 0 5px;overflow-x:auto;white-space:nowrap}.tab{display:inline-flex;align-items:center;padding:8px 20px;margin-right:2px;background-color:#f1f1f1;border-radius:5px 5px 0 0;cursor:pointer;max-width:200px;overflow:hidden}.tab.active{background-color:#fff}.tab-title{margin-right:5px;overflow:hidden;text-overflow:ellipsis}.close-tab{font-size:14px;color:#999;cursor:pointer}.new-tab{padding:8px;background-color:transparent;border:none;cursor:pointer;font-size:20px}.address-bar{flex-grow:1;margin:0 10px;padding:5px;border:1px solid #ccc;border-radius:20px}.controls button{margin-left:5px;padding:5px 10px;background-color:#f1f1f1;border:none;cursor:pointer}#webview{flex-grow:1;border:none}.dark-mode .tabs,.dark-mode .toolbar{background-color:#333}.dark-mode .tab{background-color:#444;color:#fff}.dark-mode .tab.active{background-color:#555}.dark-mode .address-bar{background-color:#444;color:#fff;border-color:#666}.dark-mode .controls button{background-color:#444;color:#fff}</style>
+</head>
+<body>
+<div class=browser>
+<div class=tabs id=tabs>
+<button class=new-tab id=newTab>+</button>
+</div>
+<div class=toolbar>
+<div class=controls>
+<button id=back>←</button>
+<button id=forward>→</button>
+<button id=reload>↻</button>
+</div>
+<input class=address-bar id=addressBar placeholder="Enter URL or search...">
+<div class=controls>
+<button id=bookmark>★</button>
+<button id=settings>⚙</button>
+<button id=toggleDarkMode>🌙</button>
+</div>
+</div>
+<iframe id=webview src=about:blank sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
+</div>
+<script>const tabs=[];let activeTabIndex=-1;const proxyBaseUrl="/proxy/";function createTab(e="https://google.com"){const t=document.createElement("div");t.className="tab",t.innerHTML='\n                <span class="tab-title">New Tab</span>\n                <span class="close-tab">×</span>\n            ',document.getElementById("tabs").insertBefore(t,document.getElementById("newTab"));const n=tabs.length;tabs.push({url:e,title:"New Tab"}),t.addEventListener("click",(()=>activateTab(n))),t.querySelector(".close-tab").addEventListener("click",(e=>{e.stopPropagation(),closeTab(n)})),activateTab(n)}function activateTab(e){document.querySelectorAll(".tab").forEach(((t,n)=>{t.classList.toggle("active",n===e)})),activeTabIndex=e,loadURL(tabs[e].url)}function closeTab(e){tabs.splice(e,1),document.querySelectorAll(".tab")[e].remove(),0===tabs.length?createTab():activateTab(Math.min(e,tabs.length-1))}function updateTabTitle(e){tabs[activeTabIndex].title=e,document.querySelectorAll(".tab")[activeTabIndex].querySelector(".tab-title").textContent=e}function loadURL(e){e.startsWith("http://")||e.startsWith("https://")||(e="https://"+e);const t=window.location.origin+"/proxy/"+e;document.getElementById("addressBar").value=e,document.getElementById("webview").src=t,tabs[activeTabIndex].url=e}document.getElementById("newTab").addEventListener("click",(()=>createTab())),document.getElementById("addressBar").addEventListener("keypress",(e=>{"Enter"===e.key&&loadURL(e.target.value)})),document.getElementById("back").addEventListener("click",(()=>document.getElementById("webview").contentWindow.history.back())),document.getElementById("forward").addEventListener("click",(()=>document.getElementById("webview").contentWindow.history.forward())),document.getElementById("reload").addEventListener("click",(()=>document.getElementById("webview").contentWindow.location.reload())),document.getElementById("bookmark").addEventListener("click",(()=>{const e=tabs[activeTabIndex].url;alert(`Bookmarked: ${e}`)})),document.getElementById("settings").addEventListener("click",(()=>{alert("Settings functionality is not implemented yet.")})),document.getElementById("toggleDarkMode").addEventListener("click",(()=>{document.body.classList.toggle("dark-mode")})),document.getElementById("webview").addEventListener("load",(()=>{updateTabTitle(document.getElementById("webview").contentDocument.title||"New Tab")})),createTab()</script>
+</body>
+</html>
