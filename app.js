@@ -38,6 +38,9 @@ async function modifyHtml(data) {
     }
     
     const $ = cheerio.load(content);
+
+    $('meta[http-equiv="Content-Security-Policy"]').remove();
+
     $('a, link, script, img, iframe').each(function() {
       const elem = $(this);
       ['href', 'src'].forEach(attr => {
@@ -46,8 +49,19 @@ async function modifyHtml(data) {
         }
       });
     });
+
+    if (!$('base').length) {
+      $('head').prepend(`<base href="${data.url}">`);
+    }
+
     data.content = $.html();
   }
+
+  if (!data.headers) {
+    data.headers = {};
+  }
+  data.headers['Content-Security-Policy'] = "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;";
+
   return data;
 }
 
@@ -72,7 +86,7 @@ async function fetchWebsiteData(websiteUrl) {
 
   await page.setExtraHTTPHeaders({
     'Accept-Language': 'en-US,en;q=0.9',
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/\*;q=0.8',
     'Accept-Encoding': 'gzip, deflate, br'
   });
 
