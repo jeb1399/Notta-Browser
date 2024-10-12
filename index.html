@@ -11,8 +11,10 @@
             font-family: Arial, sans-serif;
             height: 100%;
             overflow: hidden;
+            background: rgba(0, 0, 0, 0.1);
         }
         .browser {
+            background-color: rgba(0, 0, 0, 0.1);
             display: flex;
             flex-direction: column;
             height: 100vh;
@@ -21,14 +23,21 @@
             display: flex;
             align-items: center;
             padding: 5px;
-            background-color: #f1f1f1;
+            background-color: rgba(0, 0, 0, 0.1);
+            box-shadow: 0 -3px 3px -1px rgba(0, 0, 0, 0.1);
+        }
+        .tabsBar {
+            display: flex;
+            background-color: rgba(0, 0, 0, 0.1);
+            overflow-x: auto;
+            white-space: nowrap;
+            height: 35px;
         }
         .tabs {
             display: flex;
-            background-color: #e8e8e8;
-            padding: 5px;
             overflow-x: auto;
-            white-space: nowrap;
+            flex-grow: 1;
+            margin-right: 5px;
         }
         .tab {
             display: inline-flex;
@@ -39,7 +48,9 @@
             border-radius: 5px 5px 0 0;
             cursor: pointer;
             max-width: 200px;
+            min-width: 100px;
             overflow: hidden;
+            flex-shrink: 0;
         }
         .tab.active {
             background-color: #fff;
@@ -48,6 +59,7 @@
             margin-right: 5px;
             overflow: hidden;
             text-overflow: ellipsis;
+            white-space: nowrap;
         }
         .close-tab {
             font-size: 14px;
@@ -56,12 +68,18 @@
         }
         .new-tab {
             padding: 8px;
-            background-color: rgba(0, 0, 0, 0.1);
+            background-color: transparent;
             border: none;
             cursor: pointer;
             font-size: 20px;
             border-radius: 100px;
+            flex-shrink: 0;
+            transition: color 3s ease-in;
+            height: auto;
         }
+        /* .new-tab:hover {
+            background-color: rgba(0, 0, 0, 0.1);
+        } */
         .address-bar {
             flex-grow: 1;
             margin: 0 10px;
@@ -104,11 +122,36 @@
             background-color: rgba(0, 0, 0, 0.1);
             transition: border-color 0.6s ease-out;
         }
+        #settingsPage {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+        .dark-mode #settingsPage {
+            background-color: #333;
+            color: #fff;
+        }
+        #settingsPage div {
+            margin-bottom: 10px;
+        }
+        #settingsPage input[type="range"] {
+            width: 200px;
+        }
+        #settingsPage input[type="number"] {
+            width: 50px;
+        }
     </style>
 </head>
 <body class="dark-mode">
 <div class="browser">
-    <div class="tabs" id="tabs">
+    <div class="tabsBar">
+        <div class="tabs" id="tabs"></div>
         <button class="new-tab" id="newTab">+</button>
     </div>
     <div class="toolbar">
@@ -127,20 +170,48 @@
     <iframe id="webview" src="about:blank" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
 </div>
 
+<div id="settingsPage" style="display: none;">
+    <h2>Browser Settings</h2>
+    <div>
+        <label for="zoomLevel">Zoom Level:</label>
+        <input type="range" min="50" max="200" step="10" value="100" id="zoomLevel">
+        <input type="number" min="50" max="200" step="10" value="100" id="zoomLevelNumber">
+    </div>
+    <div>
+        <label for="fontSize">Font Size:</label>
+        <input type="range" min="10" max="30" step="1" value="16" id="fontSize">
+        <input type="number" min="10" max="30" step="1" value="16" id="fontSizeNumber">
+    </div>
+    <div>
+        <label for="enableCookies">Enable Cookies:</label>
+        <input type="checkbox" id="enableCookies" checked>
+    </div>
+    <div>
+        <label for="clearCache">Clear Cache on Exit:</label>
+        <input type="checkbox" id="clearCache">
+    </div>
+    <button id="saveSettings">Save Settings</button>
+</div>
+
 <script>
 const tabs = [];
 let activeTabIndex = -1;
 const proxyBaseUrl = "/proxy/";
 const homepageLink = window.location.href + "home/";
+const MAX_TABS = 111;
 
 function createTab(url = homepageLink) {
+    if (tabs.length >= MAX_TABS) {
+        alert("Maximum number of tabs reached!");
+        return;
+    }
     const tab = document.createElement("div");
     tab.className = "tab";
     tab.innerHTML = `
         <span class="tab-title">New Tab</span>
         <span class="close-tab">×</span>
     `;
-    document.getElementById("tabs").insertBefore(tab, document.getElementById("newTab"));
+    document.getElementById("tabs").insertBefore(tab, null);
     const n = tabs.length;
     tabs.push({ url: url, title: "New Tab" });
     tab.addEventListener("click", () => activateTab(n));
@@ -222,13 +293,12 @@ document.getElementById("bookmark").addEventListener("click", () => {
     alert(`Bookmarked: ${url}`);
 });
 document.getElementById("settings").addEventListener("click", () => {
-    document.getElementById("webview").src = "settings";
+    document.getElementById("settingsPage").style.display = "block";
 });
 document.getElementById("toggleDarkMode").addEventListener("click", () => {
     document.body.classList.toggle("dark-mode");
     document.getElementById("toggleDarkMode").textContent = document.body.classList.contains("dark-mode") ? "☀️" : "🌙";
 });
-createTab();
 
 function applySettings(settings) {
     if (settings.zoomLevel) {
@@ -238,13 +308,16 @@ function applySettings(settings) {
         document.body.style.fontSize = settings.fontSize + 'px';
     }
     if (settings.enableCookies) {
-        // TODO: ACTUALLY ADD IT
+        document.cookie = "cookiesEnabled=true; SameSite=Strict; Secure";
+    } else {
+        document.cookie = "cookiesEnabled=false; SameSite=Strict; Secure";
     }
     if (settings.clearCache) {
-        // TODO: ACTUALLY ADD IT
+        localStorage.clear();
+        sessionStorage.clear();
     }
 }
-    
+
 document.addEventListener("DOMContentLoaded", () => {
     const saveSettingsButton = document.getElementById("saveSettings");
     if (saveSettingsButton) {
@@ -256,34 +329,30 @@ document.addEventListener("DOMContentLoaded", () => {
                 clearCache: document.getElementById("clearCache").checked
             };
             applySettings(settings);
-            alert("Settings saved!");
+            document.getElementById("settingsPage").style.display = "none";
         });
     }
-});
-</script>
 
-<!-- Settings Page -->
-<div id="settingsPage" style="display: none;">
-    <h2>Browser Settings</h2>
-    <div>
-        <label for="zoomLevel">Zoom Level:</label>
-        <input type="range" min="50" max="200" step="10" value="100" id="zoomLevel">
-        <input type="number" min="50" max="200" step="10" value="100" id="zoomLevelNumber">
-    </div>
-    <div>
-        <label for="fontSize">Font Size:</label>
-        <input type="range" min="10" max="30" step="1" value="16" id="fontSize">
-        <input type="number" min="10" max="30" step="1" value="16" id="fontSizeNumber">
-    </div>
-    <div>
-        <label for="enableCookies">Enable Cookies:</label>
-        <input type="checkbox" id="enableCookies" checked>
-    </div>
-    <div>
-        <label for="clearCache">Clear Cache on Exit:</label>
-        <input type="checkbox" id="clearCache">
-    </div>
-    <button id="saveSettings">Save Settings</button>
-</div>
+    const zoomLevel = document.getElementById("zoomLevel");
+    const zoomLevelNumber = document.getElementById("zoomLevelNumber");
+    zoomLevel.addEventListener("input", () => {
+        zoomLevelNumber.value = zoomLevel.value;
+    });
+    zoomLevelNumber.addEventListener("input", () => {
+        zoomLevel.value = zoomLevelNumber.value;
+    });
+
+    const fontSize = document.getElementById("fontSize");
+    const fontSizeNumber = document.getElementById("fontSizeNumber");
+    fontSize.addEventListener("input", () => {
+        fontSizeNumber.value = fontSize.value;
+    });
+    fontSizeNumber.addEventListener("input", () => {
+        fontSize.value = fontSizeNumber.value;
+    });
+});
+
+createTab();
+</script>
 </body>
 </html>
