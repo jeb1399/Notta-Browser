@@ -184,24 +184,22 @@ function loadURL(url) {
     tabs[activeTabIndex].url = url;
 }
 
-// Update address bar on navigation
 document.getElementById("webview").addEventListener("load", () => {
     const webview = document.getElementById("webview");
     const currentURL = webview.contentWindow.location.href;
     if (currentURL !== tabs[activeTabIndex].url) {
         tabs[activeTabIndex].url = currentURL;
-        const cleanedURL = currentURL.replace(/.*\/proxy\//, ''); // Remove everything before /proxy/
-        document.getElementById("addressBar").value = cleanedURL; // Update the address bar
+        const cleanedURL = currentURL.replace(/.*\/proxy\//, '');
+        document.getElementById("addressBar").value = cleanedURL;
         updateTabTitle(webview.contentDocument.title || "New Tab");
     }
 
-    // Intercept links to open in the browser
     webview.contentWindow.document.body.addEventListener('click', function (e) {
         const target = e.target.closest('a[target="_blank"], a[target="new"]');
         if (target) {
             e.preventDefault();
             const newUrl = target.href;
-            createTab(newUrl); // Open in a new tab within the UB Browser
+            createTab(newUrl);
         }
     });
 });
@@ -224,7 +222,7 @@ document.getElementById("bookmark").addEventListener("click", () => {
     alert(`Bookmarked: ${url}`);
 });
 document.getElementById("settings").addEventListener("click", () => {
-    document.getElementById("webview").src = "settings"; // Load settings page
+    document.getElementById("webview").src = "settings";
 });
 document.getElementById("toggleDarkMode").addEventListener("click", () => {
     document.body.classList.toggle("dark-mode");
@@ -232,7 +230,6 @@ document.getElementById("toggleDarkMode").addEventListener("click", () => {
 });
 createTab();
 
-// Settings page functionality
 function applySettings(settings) {
     if (settings.zoomLevel) {
         document.body.style.zoom = settings.zoomLevel + '%';
@@ -241,14 +238,13 @@ function applySettings(settings) {
         document.body.style.fontSize = settings.fontSize + 'px';
     }
     if (settings.enableCookies) {
-        // Implement cookie enabling logic here
+        // TODO: ACTUALLY ADD IT
     }
     if (settings.clearCache) {
-        // Implement cache clearing logic here
+        // TODO: ACTUALLY ADD IT
     }
 }
-
-// Handle settings page
+    
 document.addEventListener("DOMContentLoaded", () => {
     const saveSettingsButton = document.getElementById("saveSettings");
     if (saveSettingsButton) {
