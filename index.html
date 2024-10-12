@@ -56,10 +56,11 @@
         }
         .new-tab {
             padding: 8px;
-            background-color: transparent;
+            background-color: rgba(0, 0, 0, 0.1);
             border: none;
             cursor: pointer;
             font-size: 20px;
+            border-radius: 100px;
         }
         .address-bar {
             flex-grow: 1;
@@ -105,7 +106,7 @@
         }
     </style>
 </head>
-<body>
+<body class="dark-mode">
 <div class="browser">
     <div class="tabs" id="tabs">
         <button class="new-tab" id="newTab">+</button>
@@ -120,7 +121,7 @@
         <div class="controls">
             <button id="bookmark">★</button>
             <button id="settings">⚙</button>
-            <button id="toggleDarkMode">🌙</button>
+            <button id="toggleDarkMode">☀️</button>
         </div>
     </div>
     <iframe id="webview" src="about:blank" sandbox="allow-scripts allow-same-origin allow-forms"></iframe>
@@ -227,6 +228,7 @@ document.getElementById("settings").addEventListener("click", () => {
 });
 document.getElementById("toggleDarkMode").addEventListener("click", () => {
     document.body.classList.toggle("dark-mode");
+    document.getElementById("toggleDarkMode").textContent = document.body.classList.contains("dark-mode") ? "☀️" : "🌙";
 });
 createTab();
 
