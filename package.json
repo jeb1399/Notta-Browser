@@ -23,8 +23,5 @@
     "puppeteer": "^23.5.3",
     "unblocker": "^2.3.0",
     "user-agents": "^1.1.325"
-  },
-  "engines": {
-    "node": ">=16.0.0 <18.0.0"
   }
 }
