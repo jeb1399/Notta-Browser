@@ -283,7 +283,7 @@
                 <label for="clearCache">Clear Cache on Exit:</label>
                 <input type="checkbox" id="clearCache">
             </div>
-            <button id="saveSettings">Save Settings</button>
+            <button id="saveSettings">Save Settings</button><button id="closeBtn">Cancel</button>
         </div>
         <script>
         const tabs = [];
@@ -412,6 +412,7 @@
         
         document.addEventListener("DOMContentLoaded", () => {
             const saveSettingsButton = document.getElementById("saveSettings");
+            const cancelButton = document.getElementById("closeBtn");
             if (saveSettingsButton) {
                 saveSettingsButton.addEventListener("click", () => {
                     const settings = {
@@ -423,6 +424,7 @@
                     applySettings(settings);
                     document.getElementById("settingsPage").style.display = "none";
                 });
+                cancelButton.addEventListener("click", function() {document.getElementById("settingsPage").style.display = "none";});
             }
         
             const zoomLevel = document.getElementById("zoomLevel");
