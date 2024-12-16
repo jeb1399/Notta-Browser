@@ -8,13 +8,13 @@ Hello and welcome this is my proxy, it should look like a browser and should hav
 
 What it looks like when you first open it: 
 
-<img src="https://i.ibb.co/rcx0gVD/Screenshot-2024-10-11-231542.png" alt="default (screenshot 1)"/>
+<img src="https://i.ibb.co/Mg2yp6T/homepage-1.png" alt="Homepage"/>
 
 Settings open: 
-<img src="https://i.ibb.co/JK9WVS4/Screenshot-2024-10-11-231649.png" alt="settings open (screenshot 2)"/>
+<img src="https://i.ibb.co/NxK8yy8/homepage-with-settings.png" alt="Homepage with settings open"/>
 
 Google.com (still being worked on): 
-<img src="https://i.ibb.co/Y8Px8tS/Screenshot-2024-10-11-232412.png" alt="google.com (screenshot 3)"/>
+<img src="https://i.ibb.co/GMHckw5/google-com.png" alt="google.com unblocked"/>
 
 <hr/>
 
@@ -36,7 +36,7 @@ Install dependencies `npm install -y`
 
 
 
-**(OPTIONAL)**: If you want to run it once or for testing run `node app.js`
+**(OPTIONAL)**: If you want to run it once or for testing run `node app.js` (Sometimes it may break and you may need to perform every command again with `sudo`)
 
 <hr/>
 
