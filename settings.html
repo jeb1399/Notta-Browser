@@ -98,32 +98,25 @@
         <input type="number" min="10" max="30" step="1" value="16" id="fontSizeNumber">
     </div>
 
-    <button id="save">Save Settings</button>
+    <button id="save">Save Settings</button><button id="closeBtn">Cancel</button>
 </div>
 
 <script>
     function saveSettings() {
         const zoomLevel = document.getElementById("zoomLevel").value;
         document.cookie = `zoomLevel=${zoomLevel}; path=/`;
-        
         const homepage = document.getElementById("homepage").value;
         document.cookie = `homepage=${homepage}; path=/`;
-
         const searchEngine = document.getElementById("searchEngine").value;
         document.cookie = `searchEngine=${searchEngine}; path=/`;
-
         const privacyLevel = document.getElementById("privacyLevel").value;
         document.cookie = `privacyLevel=${privacyLevel}; path=/`;
-
         const blockPopups = document.getElementById("blockPopups").checked;
         document.cookie = `blockPopups=${blockPopups}; path=/`;
-
         const clearCache = document.getElementById("clearCache").checked;
         document.cookie = `clearCache=${clearCache}; path=/`;
-
         const enableCookies = document.getElementById("enableCookies").checked;
         document.cookie = `enableCookies=${enableCookies}; path=/`;
-
         const fontSize = document.getElementById("fontSize").value;
         document.cookie = `fontSize=${fontSize}; path=/`;
     }
@@ -164,8 +157,6 @@
     }
 
     document.getElementById("save").addEventListener("click", saveSettings);
-
-    // Initialize settings on page load
     initSettings();
 </script>
 </body>
