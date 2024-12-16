@@ -1,6 +1,9 @@
 <!doctype html>
 <html lang="en">
 <head>
+<script src="/proxy/client/unblocker-client.js"></script>
+<script>unblockerInit({"prefix":"/proxy/","url":"http://server.local/home/"}, window);</script>
+
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>New Tab</title>
@@ -123,25 +126,26 @@
             text-decoration: underline;
         }
     </style>
+<meta name="ROBOTS" content="NOINDEX, NOFOLLOW"/>
 </head>
 <body>
     <div class="container">
         <h1>UB Browser Homepage</h1>
-        <form class="search-form" id="searchForm" action="https://www.google.com/search" method="get">
+        <form class="search-form" id="searchForm" action="/proxy/https://www.google.com/search" method="get">
             <input type="text" name="q" placeholder="Enter your search query" />
             <input type="submit" value="Search" />
         </form>
         <div class="engine-buttons">
-            <button class="engine-button selected" onclick="setEngine('https://www.google.com/search', this)">Google</button>
-            <button class="engine-button" onclick="setEngine('https://www.wikihow.com/wikiHowTo', this)">wikiHow</button>
-            <button class="engine-button" onclick="setEngine('https://en.wikipedia.org/wiki/Special:Search', this)">Wikipedia</button>
-            <button class="engine-button" onclick="setEngine('https://duckduckgo.com/', this)">DuckDuckGo</button>
+            <button class="engine-button selected" onclick="setEngine('/proxy/https://www.google.com/search', this)">Google</button>
+            <button class="engine-button" onclick="setEngine('/proxy/https://www.wikihow.com/wikiHowTo', this)">wikiHow</button>
+            <button class="engine-button" onclick="setEngine('/proxy/https://en.wikipedia.org/wiki/Special:Search', this)">Wikipedia</button>
+            <button class="engine-button" onclick="setEngine('/proxy/https://duckduckgo.com/', this)">DuckDuckGo</button>
         </div>
     </div>
     <div class="recommended-apps">
         <h2>Recommended Apps</h2>
-        <a class="app-link" href="https://soundcloud.com">SoundCloud</a>
-        <a class="app-link" href="https://invidious.io">Invidious</a>
+        <a class="app-link" href="/proxy/https://soundcloud.com">SoundCloud</a>
+        <a class="app-link" href="/proxy/https://invidious.io">Invidious</a>
     </div>
     <script>
         function setEngine(url, button) {
