@@ -32,7 +32,7 @@ Install dependencies `npm install -y`
 
 
 
-**(OPTIONAL)**: If you want to keep your server up *24/7* then first install pm2 by running `sudo npm install pm2 -g` **(MUST RUN WITH SUDO)** then run `npm start app.js --name "UB-Browser"` then for it to run on startup run `pm2 startup` then save `pm2 save` if you cant save and it tells you it needs to force the save you may need to run `pm2 save --force` or `sudo pm2 save --force` for it to force the changes and force sync.
+**(OPTIONAL)**: If you want to keep your server up *24/7* then first install pm2 by running `sudo npm install pm2 -g` **(MUST RUN WITH SUDO)** then run `sudo pm2 start app.js --name "UB-Browser" --watch` then for it to run on startup run `pm2 startup` then save `pm2 save` if you cant save and it tells you it needs to force the save you may need to run `pm2 save --force` or `sudo pm2 save --force` for it to force the changes and force sync.
 
 
 
