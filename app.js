@@ -186,11 +186,11 @@ app.use((req, res, next) => {
 });
 
 app.get('/', (req, res) => {
-  res.sendFile(__dirname + '/index.html');
+  res.sendFile(__dirname + '/resources/index.html');
 });
-app.get('/home', (req, res) => res.sendFile(__dirname + '/homepage.html'));
-app.get('/robots.txt', (req, res) => res.sendFile(__dirname + '/robots.txt'));
-app.get('/settings', (req, res) => res.sendFile(__dirname + '/settings.html'));
+app.get('/home', (req, res) => res.sendFile(__dirname + '/resources/homepage.html'));
+app.get('/robots.txt', (req, res) => res.sendFile(__dirname + '/resources/robots.txt'));
+app.get('/settings', (req, res) => res.sendFile(__dirname + '/resources/settings.html'));
 
 app.get('/proxy/*', async (req, res, next) => {
   const fileUrl = req.url.slice(7); 
