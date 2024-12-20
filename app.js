@@ -190,7 +190,9 @@ app.get('/', (req, res) => {
 });
 app.get('/home', (req, res) => res.sendFile(__dirname + '/resources/homepage.html'));
 app.get('/robots.txt', (req, res) => res.sendFile(__dirname + '/resources/robots.txt'));
-app.get('/settings', (req, res) => res.sendFile(__dirname + '/resources/settings.html'));
+
+// settings.html is unusable
+// app.get('/settings', (req, res) => res.sendFile(__dirname + '/resources/settings.html'));
 
 app.get('/proxy/*', async (req, res, next) => {
   const fileUrl = req.url.slice(7); 
