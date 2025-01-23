@@ -136,10 +136,11 @@
             <input type="submit" value="Search" />
         </form>
         <div class="engine-buttons">
-            <button class="engine-button selected" onclick="setEngine('/proxy/https://www.google.com/search', this)">Google</button>
-            <button class="engine-button" onclick="setEngine('/proxy/https://www.wikihow.com/wikiHowTo', this)">wikiHow</button>
-            <button class="engine-button" onclick="setEngine('/proxy/https://en.wikipedia.org/wiki/Special:Search', this)">Wikipedia</button>
-            <button class="engine-button" onclick="setEngine('/proxy/https://duckduckgo.com/', this)">DuckDuckGo</button>
+            <button class="engine-button selected" onclick="setEngine('/proxy/https://www.google.com/search', this)" title="(Insecure)">Google</button>
+            <button class="engine-button" onclick="setEngine('/proxy/https://www.wikihow.com/wikiHowTo', this)" title="(Information)">wikiHow</button>
+            <button class="engine-button" onclick="setEngine('/proxy/https://en.wikipedia.org/wiki/Special:Search', this)" title="(Information)">Wikipedia</button>
+            <button class="engine-button" onclick="setEngine('/proxy/https://duckduckgo.com/', this)" title="(Insecure)">DuckDuckGo</button>
+            <button class="engine-button" onclick="setEngine('/proxy/https://torry.io/search?q=', this)" title="(Slightly more secure)">Torry</button>
         </div>
     </div>
     <div class="recommended-apps">
