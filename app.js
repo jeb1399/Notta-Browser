@@ -14,6 +14,8 @@ const app = express();
 const cache = new NodeCache({ stdTTL: 300, checkperiod: 60 });
 const fileCache = new NodeCache({ stdTTL: 3600, checkperiod: 300 }); 
 
+const HOST_PORT = 80;
+
 function decodeUrl(encodedUrl) {
   return decodeURIComponent(encodedUrl.replace(/\+/g, ' '));
 }
@@ -223,8 +225,8 @@ app.get('/fetch', async (req, res) => {
 });
 
 const httpServer = http.createServer(app);
-httpServer.listen(80, () => {
-  console.log("HTTP Server Running On Port: 80");
+httpServer.listen(HOST_PORT, '0.0.0.0', () => {
+  console.log(`HTTP Server Running On Port: ${HOST_PORT}`);
 });
 
 httpServer.on('upgrade', unblocker.onUpgrade);
