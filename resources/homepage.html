@@ -1,146 +1,29 @@
 <!doctype html>
 <html lang="en">
 <head>
-<script src="/proxy/client/unblocker-client.js"></script>
-<script>unblockerInit({"prefix":"/proxy/","url":"http://server.local/home/"}, window);</script>
-
+    <script src="/proxy/client/unblocker-client.js"></script>
+    <script>unblockerInit({"prefix":"/proxy/","url":"http://server.local/home/"}, window);</script>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>New Tab</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            margin: 0;
-            background-color: #131313;
-            overflow: hidden;
-            transition: background-color 0.5s ease;
-        }
-        .container {
-            text-align: center;
-            padding: 40px;
-            border-radius: 15px;
-            background-color: rgba(255, 255, 255, 0.15);
-            box-shadow: 0 10px 50px rgba(0, 0, 0, 0.5);
-            max-width: 500px;
-            transition: background-color 0.5s ease, box-shadow 0.5s ease;
-        }
-        h1 {
-            margin-bottom: 25px;
-            font-size: 2.8rem;
-            color: rgba(255, 255, 255, 0.9);
-            transition: color 0.5s ease;
-        }
-        .engine-buttons, .search-form {
-            margin-top: 20px;
-        }
-        .search-form {
-            display: flex;
-            align-items: center;
-        }
-        input[type="text"] {
-            width: 100%;
-            max-width: 400px;
-            padding: 14px;
-            font-size: 18px;
-            border: none;
-            border-radius: 8px 0 0 8px; /* Rounded corners only on the left */
-            background-color: rgba(255, 255, 255, 0.2);
-            color: rgba(255, 255, 255, 0.9);
-            transition: background-color 0.3s ease, box-shadow 0.3s ease;
-        }
-        input[type="text"]:focus {
-            outline: none;
-            background-color: rgba(255, 255, 255, 0.3);
-            box-shadow: 0 0 8px rgba(76, 175, 80, 0.6);
-        }
-        input[type="submit"] {
-            font-size: 18px;
-            background-color: #4caf50;
-            color: white; /* Ensured text is white */
-            border: none;
-            border-radius: 0 8px 8px 0; /* Rounded corners only on the right */
-            padding: 12px 20px;
-            cursor: pointer;
-            transition: background-color 0.3s ease, transform 0.2s ease, box-shadow 0.3s ease;
-        }
-        input[type="submit"]:hover {
-            background-color: #45a049;
-            transform: scale(1.05);
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
-        }
-        .engine-button {
-            font-size: 16px;
-            margin: 0 5px;
-            background-color: rgba(255, 255, 255, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 5px;
-            padding: 12px 20px;
-            color: white; /* Ensured text is white */
-            cursor: pointer;
-            transition: background-color 0.3s ease, transform 0.2s ease, color 0.3s ease;
-        }
-        .engine-button:hover {
-            background-color: rgba(255, 255, 255, 0.3);
-            transform: scale(1.05);
-            color: rgba(0, 0, 0, 0.9);
-        }
-        .selected {
-            background-color: rgba(0, 0, 0, 0.6);
-            border-color: #999;
-            color: #fff;
-        }
-        .recommended-apps {
-            position: fixed;
-            right: 20px;
-            top: 50%;
-            transform: translateY(-50%);
-            background-color: rgba(255, 255, 255, 0.1);
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-            width: 200px;
-            max-height: 80vh;
-            overflow-y: auto;
-            transition: transform 0.3s ease, opacity 0.3s;
-            opacity: 0.9;
-        }
-        .recommended-apps h2 {
-            color: rgba(255, 255, 255, 0.9);
-            font-size: 1.5rem;
-            margin-bottom: 10px;
-            transition: color 0.5s ease;
-        }
-        .app-link {
-            display: block;
-            color: rgba(76, 175, 80, 0.9);
-            text-decoration: none;
-            margin: 5px 0;
-            transition: color 0.3s ease;
-        }
-        .app-link:hover {
-            color: rgba(76, 175, 80, 1);
-            text-decoration: underline;
-        }
-    </style>
+    <link rel="stylesheet" href="css/home.css">
 <meta name="ROBOTS" content="NOINDEX, NOFOLLOW"/>
 </head>
 <body>
     <div class="container">
-        <h1>UB Browser Homepage</h1>
-        <form class="search-form" id="searchForm" action="/proxy/https://www.google.com/search" method="get">
-            <input type="text" name="q" placeholder="Enter your search query" />
-            <input type="submit" value="Search" />
-        </form>
-        <div class="engine-buttons">
-            <button class="engine-button selected" onclick="setEngine('/proxy/https://www.google.com/search', this)" title="(Insecure)">Google</button>
-            <button class="engine-button" onclick="setEngine('/proxy/https://www.wikihow.com/wikiHowTo', this)" title="(Information)">wikiHow</button>
-            <button class="engine-button" onclick="setEngine('/proxy/https://en.wikipedia.org/wiki/Special:Search', this)" title="(Information)">Wikipedia</button>
-            <button class="engine-button" onclick="setEngine('/proxy/https://duckduckgo.com/', this)" title="(Insecure)">DuckDuckGo</button>
-            <button class="engine-button" onclick="setEngine('/proxy/https://torry.io/search?q=', this)" title="(Slightly more secure)">Torry</button>
+        <div class="content">
+            <h1>UB Browser Homepage</h1>
+            <form class="search-form" id="searchForm" action="/proxy/https://www.google.com/search" method="get">
+                <input type="text" name="q" placeholder="Enter your search query" autocomplete="off" autocorrect="off"/>
+                <input type="submit" value="Search" />
+            </form>
+            <div class="engine-buttons">
+                <button class="engine-button selected" onclick="setEngine('/proxy/https://torry.io/search?q=', this)" title="(Slightly more secure)">Torry</button>
+                <button class="engine-button" onclick="setEngine('/proxy/https://www.wikihow.com/wikiHowTo', this)" title="(Information)">wikiHow</button>
+                <button class="engine-button" onclick="setEngine('/proxy/https://en.wikipedia.org/wiki/Special:Search', this)" title="(Information)">Wikipedia</button>
+                <button class="engine-button" onclick="setEngine('/proxy/https://duckduckgo.com/', this)" title="(Insecure)">DuckDuckGo</button>
+                <button class="engine-button" onclick="setEngine('/proxy/https://www.google.com/search', this)" title="(Insecure)">Google</button>
+            </div>
         </div>
     </div>
     <div class="recommended-apps">
@@ -148,17 +31,6 @@
         <a class="app-link" href="/proxy/https://soundcloud.com">SoundCloud</a>
         <a class="app-link" href="/proxy/https://invidious.io">Invidious</a>
     </div>
-    <script>
-        function setEngine(url, button) {
-            const searchForm = document.getElementById('searchForm');
-            searchForm.action = url;
-            const buttons = document.querySelectorAll('.engine-button');
-            buttons.forEach(btn => btn.classList.remove('selected'));
-            button.classList.add('selected');
-        }
-        document.querySelectorAll(".app-link").forEach(link => {
-            link.title = link.innerText;
-        });
-    </script>
+    <script src="scripts/homepage/home.js"></script>
 </body>
 </html>
