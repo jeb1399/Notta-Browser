@@ -11,8 +11,8 @@ const path = require('path');
 const fs = require('fs').promises;
 
 const app = express();
-const cache = new NodeCache({ stdTTL: 300, checkperiod: 60 });
-const fileCache = new NodeCache({ stdTTL: 3600, checkperiod: 300 }); 
+const cache = new NodeCache({ stdTTL: 300, checkperiod: 120, useClones: false });
+const fileCache = new NodeCache({ stdTTL: 3600, checkperiod: 600, useClones: false });
 
 const HOST_PORT = 80;
 
@@ -20,7 +20,7 @@ function decodeUrl(encodedUrl) {
   return decodeURIComponent(encodedUrl.replace(/\+/g, ' '));
 }
 
-async function downloadFile(fileUrl, basePath) {
+async function downloadFile(fileUrl) {
   const cacheKey = `file:${fileUrl}`;
   const cachedFile = fileCache.get(cacheKey);
   if (cachedFile) return cachedFile;
@@ -29,16 +29,15 @@ async function downloadFile(fileUrl, basePath) {
     const protocol = fileUrl.startsWith('https') ? https : http;
     protocol.get(fileUrl, (response) => {
       if (response.statusCode === 200) {
-        let data = '';
-        response.on('data', (chunk) => {
-          data += chunk;
-        });
+        const chunks = [];
+        response.on('data', (chunk) => { chunks.push(chunk); });
         response.on('end', () => {
+          const data = Buffer.concat(chunks);
           fileCache.set(cacheKey, data);
           resolve(data);
         });
       } else {
-        reject(new Error(`Failed to download file: ${fileUrl}`));
+        reject(new Error(`Failed to download file: ${fileUrl} (Status ${response.statusCode})`));
       }
     }).on('error', reject);
   });
@@ -47,21 +46,19 @@ async function downloadFile(fileUrl, basePath) {
 async function downloadAllFiles(baseUrl, html) {
   const $ = cheerio.load(html);
   const filesToDownload = new Set();
-
   $('script[src], link[href], img[src], source[src]').each((_, elem) => {
     const src = $(elem).attr('src') || $(elem).attr('href');
     if (src && !src.startsWith('data:') && !src.startsWith('http')) {
-      filesToDownload.add(url.resolve(baseUrl, src));
+      const absoluteUrl = url.resolve(baseUrl, src);
+      filesToDownload.add(absoluteUrl);
     }
   });
 
+  const downloads = [];
   for (const fileUrl of filesToDownload) {
-    try {
-      await downloadFile(fileUrl, baseUrl);
-    } catch (error) {
-      console.error(`Error downloading ${fileUrl}:`, error.message);
-    }
+    downloads.push(downloadFile(fileUrl).catch(() => null));
   }
+  await Promise.all(downloads);
 }
 
 async function handleRedirects(data) {
@@ -95,7 +92,9 @@ async function modifyHtml(data) {
       ['href', 'src', 'action'].forEach(attr => {
         if (elem.attr(attr)) {
           let originalUrl = elem.attr(attr);
-          if (!originalUrl.startsWith('/proxy/') && !originalUrl.startsWith('javascript:') && !originalUrl.startsWith('data:')) {
+          if (!originalUrl.startsWith('/proxy/') &&
+              !originalUrl.startsWith('javascript:') &&
+              !originalUrl.startsWith('data:')) {
             elem.attr(attr, '/proxy/' + url.resolve(data.url, originalUrl));
           }
         }
@@ -117,6 +116,7 @@ async function modifyHtml(data) {
 
     data.content = $.html();
 
+    // Prefetch resources referenced in HTML
     await downloadAllFiles(data.url, data.content);
   }
 
@@ -138,12 +138,19 @@ async function fetchWebsiteData(websiteUrl) {
   if (!websiteUrl.startsWith('/proxy/')) {
     throw new Error('URL must start with /proxy/');
   }
-  websiteUrl = websiteUrl.substring(7);
+  const actualUrl = websiteUrl.substring(7);
 
   const browser = await puppeteer.launch({
     headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-web-security']
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-web-security',
+      '--disable-features=IsolateOrigins,site-per-process',
+      '--blink-settings=imagesEnabled=false'
+    ],
   });
+
   const page = await browser.newPage();
 
   const userAgent = new UserAgent();
@@ -152,20 +159,27 @@ async function fetchWebsiteData(websiteUrl) {
   await page.setExtraHTTPHeaders({
     'Accept-Language': 'en-US,en;q=0.9',
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-    'Accept-Encoding': 'gzip, deflate, br'
   });
 
   await page.setJavaScriptEnabled(true);
+
   await page.setViewport({ width: 1366, height: 768 });
 
   try {
-    await page.goto(websiteUrl, { waitUntil: 'networkidle2', timeout: 30000 });
+    await page.goto(actualUrl, { waitUntil: 'networkidle2', timeout: 30000 });
     const finalUrl = page.url();
     const content = await page.content();
+
+    // Captcha & referrer cloaking:
+    await page.evaluate(() => {
+      delete window.__proto__.document.location; // prevent internal reference leakage
+    });
+
     await browser.close();
 
-    cache.set(cacheKey, { content, finalUrl });
-    return { content, finalUrl };
+    const data = { content, url: finalUrl };
+    cache.set(cacheKey, data);
+    return data;
   } catch (error) {
     await browser.close();
     throw error;
@@ -174,35 +188,25 @@ async function fetchWebsiteData(websiteUrl) {
 
 const unblocker = new Unblocker({
   prefix: '/proxy/',
-  responseMiddleware: [
-    handleRedirects,
-    modifyHtml
-  ]
+  responseMiddleware: [handleRedirects, modifyHtml],
 });
 
 app.use(unblocker);
+
 app.use(express.static('public'));
 
-app.use((req, res, next) => {
-  next();
-});
-
 app.get('/', (req, res) => {
-  res.sendFile(__dirname + '/resources/index.html');
+  res.sendFile(path.join(__dirname, 'resources', 'index.html'));
 });
-app.get('/home', (req, res) => res.sendFile(__dirname + '/resources/homepage.html'));
-app.get('/robots.txt', (req, res) => res.sendFile(__dirname + '/resources/robots.txt'));
-
-// settings.html is unusable
-// app.get('/settings', (req, res) => res.sendFile(__dirname + '/resources/settings.html'));
 
 app.get('/proxy/*', async (req, res, next) => {
-  const fileUrl = req.url.slice(7); 
+  const fileUrl = req.url.slice(7);
   try {
     const fileContent = await downloadFile(fileUrl);
+    res.setHeader('Content-Type', getContentType(fileUrl));
     res.send(fileContent);
   } catch (error) {
-    next(); 
+    next();
   }
 });
 
@@ -216,15 +220,31 @@ app.get('/fetch', async (req, res) => {
     if (!websiteUrl.startsWith('/proxy/')) {
       websiteUrl = '/proxy/' + (websiteUrl.startsWith('http') ? websiteUrl : 'http://' + websiteUrl);
     }
-
-    const { content, finalUrl } = await fetchWebsiteData(websiteUrl);
-    res.send({ content, finalUrl });
+    const data = await fetchWebsiteData(websiteUrl);
+    res.send(data);
   } catch (error) {
     res.status(500).send('Error fetching website data: ' + error.message);
   }
 });
 
+app.all('*', async (req, res) => {
+  const reqFile = req.path.slice(1);
+  const filePath = path.join(__dirname, 'resources', reqFile);
+
+  try {
+    const stat = await fs.stat(filePath);
+    if (stat.isFile()) {
+      res.sendFile(filePath);
+    } else {
+      res.sendFile(path.join(__dirname, 'resources', '404.html'));
+    }
+  } catch {
+    res.sendFile(path.join(__dirname, 'resources', '404.html'));
+  }
+});
+
 const httpServer = http.createServer(app);
+
 httpServer.listen(HOST_PORT, '0.0.0.0', () => {
   console.log(`HTTP Server Running On Port: ${HOST_PORT}`);
 });
