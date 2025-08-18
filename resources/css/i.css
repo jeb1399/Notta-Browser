@@ -1,1 +1,201 @@
-:root{--background-color:#f5f5f5;--toolbar-background:#ffffff;--tab-background:#e0e0e0;--tab-active-background:#ffffff;--tab-hover-background:rgba(0,0,0,0.1);--address-bar-border:#cccccc;--button-background:transparent;--button-hover-background:rgba(0,0,0,0.1);--settings-background:#ffffff;--text-color:#000000;--button-text:#000000} .dark-mode{--background-color:#202124;--toolbar-background:#292a2d;--tab-background:#3c3c3c;--tab-active-background:#4a4a4a;--tab-hover-background:rgba(255,255,255,0.1);--address-bar-border:#5f6368;--button-background:transparent;--button-hover-background:rgba(255,255,255,0.1);--settings-background:#292a2d;--text-color:#ffffff;--button-text:#ffffff} body,html{margin:0;padding:0;font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;height:100%;overflow:hidden;background:var(--background-color);transition:background-color 0.3s ease;color:var(--text-color);mix-blend-mode:difference} .browser{display:flex;flex-direction:column;height:100vh;transition:background-color 0.3s ease} .toolbar{display:flex;align-items:center;padding:10px;background-color:var(--toolbar-background);box-shadow:0 2px 4px rgba(0,0,0,0.1);transition:all 0.3s ease} .tabsBar{display:flex;background-color:var(--tab-background);overflow-x:auto;white-space:nowrap;height:40px;transition:background-color 0.3s ease} .tabs{display:flex;overflow-x:auto;flex-grow:1;margin-right:5px} .tab{display:inline-flex;align-items:center;padding:8px 20px;margin-right:2px;background-color:var(--tab-background);border-radius:8px 8px 0 0;cursor:pointer;max-width:200px;min-width:100px;overflow:hidden;flex-shrink:0;transition:all 0.3s ease;color:inherit} .tab.active{background-color:var(--tab-active-background);box-shadow:0 -2px 4px rgba(0,0,0,0.1)} .tab-title{margin-right:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:inherit} .close-tab{font-size:14px;cursor:pointer;transition:color 0.3s ease;color:inherit} .close-tab:hover{opacity:0.7} .new-tab{padding:8px;background-color:var(--button-background);border:none;cursor:pointer;font-size:20px;border-radius:50%;flex-shrink:0;transition:background-color 0.3s ease;height:auto;color:var(--button-text)} .new-tab:hover{background-color:var(--button-hover-background)} .address-bar{flex-grow:1;margin:0 10px;padding:8px 15px;border:1px solid var(--address-bar-border);border-radius:20px;font-size:14px;transition:all 0.3s ease;color:black} .address-bar:focus{outline:none;border-color:#4285f4;box-shadow:0 0 0 2px rgba(66,133,244,0.3)} .controls button{margin-left:5px;padding:8px;background-color:var(--button-background);border:none;cursor:pointer;border-radius:50%;transition:background-color 0.3s ease;color:var(--button-text)} .controls button:hover{background-color:var(--button-hover-background)} #webview{flex-grow:1;border:none} #settingsPage{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background-color:var(--settings-background);padding:20px;border-radius:10px;box-shadow:0 0 20px rgba(0,0,0,0.2);z-index:1000;transition:all 0.3s ease;color:inherit} #settingsPage div{margin-bottom:15px} #settingsPage input[type="range"]{width:200px;-webkit-appearance:none;background:#d3d3d3;outline:none;opacity:0.7;transition:opacity 0.3s} #settingsPage input[type="range"]:hover{opacity:1} #settingsPage input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:20px;height:20px;background:#4285f4;cursor:pointer;border-radius:50%} #settingsPage input[type="number"]{width:60px;padding:5px;border:1px solid var(--address-bar-border);border-radius:4px} #settingsPage button{padding:10px 15px;background-color:#4285f4;color:#fff;border:none;border-radius:4px;cursor:pointer;transition:background-color 0.3s ease} #settingsPage button:hover{background-color:#3367d6}
+:root {
+    --background-color: #f5f5f5;
+    --toolbar-background: #ffffff;
+    --tab-background: #e0e0e0;
+    --tab-active-background: #ffffff;
+    --tab-hover-background: rgba(0, 0, 0, 0.1);
+    --address-bar-border: #cccccc;
+    --button-background: transparent;
+    --button-hover-background: rgba(0, 0, 0, 0.1);
+    --settings-background: rgba(255, 255, 255, 0.8);
+    --text-color: #000000;
+    --button-text: #000000;
+}
+.dark-mode {
+    --background-color: #202124;
+    --toolbar-background: #292a2d;
+    --tab-background: #3c3c3c;
+    --tab-active-background: #4a4a4a;
+    --tab-hover-background: rgba(255, 255, 255, 0.1);
+    --address-bar-border: #5f6368;
+    --button-background: transparent;
+    --button-hover-background: rgba(255, 255, 255, 0.1);
+    --settings-background: rgba(0, 0, 0, 0.85);
+    --text-color: #ffffff;
+    --button-text: #ffffff;
+}
+body,
+html {
+    margin: 0;
+    padding: 0;
+    font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+    height: 100%;
+    overflow: hidden;
+    background: var(--background-color);
+    transition: background-color 0.3s ease;
+    color: var(--text-color);
+    mix-blend-mode: difference;
+}
+.browser {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    transition: background-color 0.3s ease;
+}
+.toolbar {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    background-color: var(--toolbar-background);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+.tabsBar {
+    display: flex;
+    background-color: var(--tab-background);
+    overflow-x: auto;
+    white-space: nowrap;
+    height: 40px;
+    transition: background-color 0.3s ease;
+}
+.tabs {
+    display: flex;
+    overflow-x: auto;
+    flex-grow: 1;
+    margin-right: 5px;
+}
+.tab {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 20px;
+    margin-right: 2px;
+    background-color: var(--tab-background);
+    border-radius: 8px 8px 0 0;
+    cursor: pointer;
+    max-width: 200px;
+    min-width: 100px;
+    overflow: hidden;
+    flex-shrink: 0;
+    transition: all 0.3s ease;
+    color: inherit;
+}
+.tab.active {
+    background-color: var(--tab-active-background);
+    box-shadow: 0 -2px 4px rgba(0, 0, 0, 0.1);
+}
+.tab-title {
+    margin-right: 5px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: inherit;
+}
+.close-tab {
+    font-size: 14px;
+    cursor: pointer;
+    transition: color 0.3s ease;
+    color: inherit;
+}
+.close-tab:hover {
+    opacity: 0.7;
+}
+.new-tab {
+    padding: 8px;
+    background-color: var(--button-background);
+    border: none;
+    cursor: pointer;
+    font-size: 20px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    transition: background-color 0.3s ease;
+    height: auto;
+    color: var(--button-text);
+}
+.new-tab:hover {
+    background-color: var(--button-hover-background);
+}
+.address-bar {
+    flex-grow: 1;
+    margin: 0 10px;
+    padding: 8px 15px;
+    border: 1px solid var(--address-bar-border);
+    border-radius: 20px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    color: black;
+}
+.address-bar:focus {
+    outline: none;
+    border-color: #4285f4;
+    box-shadow: 0 0 0 2px rgba(66, 133, 244, 0.3);
+}
+.controls button {
+    margin-left: 5px;
+    padding: 8px;
+    background-color: var(--button-background);
+    border: none;
+    cursor: pointer;
+    border-radius: 50%;
+    transition: background-color 0.3s ease;
+    color: var(--button-text);
+}
+.controls button:hover {
+    background-color: var(--button-hover-background);
+}
+#webview {
+    flex-grow: 1;
+    border: none;
+}
+#settingsPage {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: var(--settings-background);
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+    z-index: 1000;
+    transition: all 0.3s ease;
+    color: inherit;
+}
+#settingsPage div {
+    margin-bottom: 15px;
+}
+#settingsPage input[type="range"] {
+    width: 200px;
+    appearance: none;
+    background: rgba(15, 74, 255);
+    outline: none;
+    opacity: 0.7;
+    transition: opacity 0.3s;
+}
+#settingsPage input[type="range"]:hover {
+    opacity: 1;
+}
+#settingsPage input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 20px;
+    height: 20px;
+    background: #79aafa;
+    cursor: pointer;
+    border-radius: 50%;
+}
+#settingsPage input[type="number"] {
+    width: 60px;
+    padding: 5px;
+    border: 1px solid var(--address-bar-border);
+    border-radius: 4px;
+}
+#settingsPage button {
+    padding: 10px 15px;
+    background: linear-gradient(135deg, #4285f4, #3367d6);
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+#settingsPage button:hover {
+    background: linear-gradient(135deg, #3367d6, #4285f4);
+}
