@@ -5,10 +5,7 @@ const homepageLink = window.location.href + "homepage.html";
 const MAX_TABS = 111;
 
 function createTab(url = homepageLink) {
-    if (tabs.length >= MAX_TABS) {
-        alert("Maximum number of tabs reached!");
-        return;
-    }
+    if (tabs.length >= MAX_TABS) {alert("Maximum number of tabs reached!")}
     const tab = document.createElement("div");
     tab.className = "tab";
     tab.innerHTML = `
@@ -80,18 +77,10 @@ document.getElementById("webview").addEventListener("load", () => {
 });
 
 document.getElementById("newTab").addEventListener("click", () => createTab());
-document.getElementById("addressBar").addEventListener("keypress", (e) => {
-    if (e.key === "Enter") loadURL(e.target.value);
-});
-document.getElementById("back").addEventListener("click", () => {
-    document.getElementById("webview").contentWindow.history.back();
-});
-document.getElementById("forward").addEventListener("click", () => {
-    document.getElementById("webview").contentWindow.history.forward();
-});
-document.getElementById("reload").addEventListener("click", () => {
-    document.getElementById("webview").contentWindow.location.reload();
-});
+document.getElementById("addressBar").addEventListener("keypress", (e) => {if (e.key === "Enter") loadURL(e.target.value);});
+document.getElementById("back").addEventListener("click", () => {document.getElementById("webview").contentWindow.history.back();});
+document.getElementById("forward").addEventListener("click", () => {document.getElementById("webview").contentWindow.history.forward();});
+document.getElementById("reload").addEventListener("click", () => {document.getElementById("webview").contentWindow.location.reload();});
 document.getElementById("bookmark").addEventListener("click", () => {
     const url = tabs[activeTabIndex].url;
     alert(`Bookmarked: ${url}`);
@@ -116,10 +105,6 @@ function applySettings(settings) {
     } else {
         document.cookie = "cookiesEnabled=false; SameSite=Strict; Secure";
     }
-    if (settings.clearCache) {
-        localStorage.clear();
-        sessionStorage.clear();
-    }
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -130,8 +115,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const settings = {
                 zoomLevel: document.getElementById("zoomLevel").value,
                 fontSize: document.getElementById("fontSize").value,
-                enableCookies: document.getElementById("enableCookies").checked,
-                clearCache: document.getElementById("clearCache").checked
+                enableCookies: document.getElementById("enableCookies").checked
             };
             applySettings(settings);
             document.getElementById("settingsPage").style.display = "none";
