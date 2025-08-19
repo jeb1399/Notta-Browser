@@ -8,23 +8,19 @@ const cheerio = require('cheerio');
 const puppeteer = require('puppeteer');
 const UserAgent = require('user-agents');
 const path = require('path');
+const fetch = require('node-fetch');
 const fs = require('fs').promises;
-
 const app = express();
 const cache = new NodeCache({ stdTTL: 300, checkperiod: 120, useClones: false });
 const fileCache = new NodeCache({ stdTTL: 3600, checkperiod: 600, useClones: false });
-
 const HOST_PORT = 80;
-
 function decodeUrl(encodedUrl) {
   return decodeURIComponent(encodedUrl.replace(/\+/g, ' '));
 }
-
 async function downloadFile(fileUrl) {
   const cacheKey = `file:${fileUrl}`;
   const cachedFile = fileCache.get(cacheKey);
   if (cachedFile) return cachedFile;
-
   return new Promise((resolve, reject) => {
     const protocol = fileUrl.startsWith('https') ? https : http;
     protocol.get(fileUrl, (response) => {
@@ -42,7 +38,6 @@ async function downloadFile(fileUrl) {
     }).on('error', reject);
   });
 }
-
 async function downloadAllFiles(baseUrl, html) {
   const $ = cheerio.load(html);
   const filesToDownload = new Set();
@@ -53,92 +48,134 @@ async function downloadAllFiles(baseUrl, html) {
       filesToDownload.add(absoluteUrl);
     }
   });
-
   const downloads = [];
   for (const fileUrl of filesToDownload) {
     downloads.push(downloadFile(fileUrl).catch(() => null));
   }
   await Promise.all(downloads);
 }
-
 async function handleRedirects(data) {
   if (data.headers && data.headers.location) {
     const location = decodeUrl(data.headers.location);
     const parsed = url.parse(location);
-    if (parsed.protocol) {
-      data.headers.location = '/proxy/' + location;
-    } else if (!location.startsWith('/proxy/')) {
-      data.headers.location = '/proxy/' + url.resolve(data.url, location);
+    if (!location.startsWith('/proxy/')) {
+      if (parsed.protocol) {
+        data.headers.location = '/proxy/' + location;
+      } else {
+        data.headers.location = '/proxy/' + url.resolve(data.url, location);
+      }
     }
   }
   return data;
 }
-
 async function modifyHtml(data) {
   if (data.contentType && data.contentType.includes('text/html') && data.content) {
-    let content = data.content;
-    if (Buffer.isBuffer(content)) {
-      content = content.toString();
-    } else if (typeof content !== 'string') {
-      return data;
-    }
-
+    let content = Buffer.isBuffer(data.content) ? data.content.toString() : data.content;
     const $ = cheerio.load(content);
 
     $('meta[http-equiv="Content-Security-Policy"]').remove();
+
+    $('meta[http-equiv="refresh"]').each(function() {
+      const meta = $(this);
+      const contentAttr = meta.attr('content');
+      if (contentAttr) {
+        meta.attr('content', contentAttr.replace(/url=(.+)/i, (_, urlPart) => `url=/proxy/${url.resolve(data.url, urlPart)}`));
+      }
+    });
 
     $('a, link, script, img, iframe, form, source').each(function() {
       const elem = $(this);
       ['href', 'src', 'action'].forEach(attr => {
         if (elem.attr(attr)) {
           let originalUrl = elem.attr(attr);
-          if (!originalUrl.startsWith('/proxy/') &&
-              !originalUrl.startsWith('javascript:') &&
-              !originalUrl.startsWith('data:')) {
-            elem.attr(attr, '/proxy/' + url.resolve(data.url, originalUrl));
+          if (!originalUrl.startsWith('/proxy/') && !originalUrl.startsWith('javascript:') && !originalUrl.startsWith('data:')) {
+            if (originalUrl.startsWith('http')) {
+              elem.attr(attr, '/proxy/' + originalUrl);
+            } else {
+              elem.attr(attr, '/proxy/' + url.resolve(data.url, originalUrl));
+            }
           }
         }
       });
     });
 
-    if (!$('base').length) {
-      $('head').prepend(`<base href="${data.url}">`);
-    }
+    if (!$('base').length) $('head').prepend(`<base href="${data.url}">`);
 
     $('body').append(`<script>
-      window.open = function(url) {
-        if (url && !url.startsWith('/proxy/')) {
-          url = '/proxy/' + url;
+      const origFetch = window.fetch;
+      window.fetch = function(resource, init){
+        if(typeof resource === 'string' && !resource.startsWith('/proxy/')) {
+          resource = '/proxy/' + resource;
         }
-        window.location.href = url;
+        return origFetch(resource, init);
       };
+      const wrapUrl = (url) => {
+        if(!url.startsWith('/proxy/')) return '/proxy/' + url;
+        return url;
+      };
+
+      window.open = function(url){ if(url) window.location.href = wrapUrl(url); };
+      const origFetch = window.fetch;
+      window.fetch = function(resource, init){
+        if(typeof resource === 'string') resource = wrapUrl(resource);
+        return origFetch(resource, init);
+      };
+      const origXhrOpen = XMLHttpRequest.prototype.open;
+      XMLHttpRequest.prototype.open = function(method,url,...args){
+        if(url) url = wrapUrl(url);
+        return origXhrOpen.call(this, method,url,...args);
+      };
+      history.pushState = ((orig) => (state,title,url) => orig.call(history,state,title,wrapUrl(url)))(history.pushState);
+      history.replaceState = ((orig) => (state,title,url) => orig.call(history,state,title,wrapUrl(url)))(history.replaceState);
     </script>`);
 
     data.content = $.html();
-
-    // Prefetch resources referenced in HTML
     await downloadAllFiles(data.url, data.content);
   }
 
-  if (!data.headers) {
-    data.headers = {};
-  }
+  if (!data.headers) data.headers = {};
   data.headers['Content-Security-Policy'] = "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;";
   data.headers['X-Frame-Options'] = 'ALLOWALL';
   data.headers['Access-Control-Allow-Origin'] = '*';
-
   return data;
+}
+app.use((req, res, next) => {
+  req.headers['x-forwarded-for'] = '0.0.0.0';
+  req.headers['via'] = '0.0.0.0';
+  req.headers['forwarded'] = 'for=0.0.0.0;proto=http;by=0.0.0.0';
+  req.headers['client-ip'] = '0.0.0.0';
+  req.headers['remote-addr'] = '0.0.0.0';
+
+  if (req.connection) req.connection.remoteAddress = '0.0.0.0';
+  if (req.socket) req.socket.remoteAddress = '0.0.0.0';
+  if (req.connection && req.connection.socket)
+    req.connection.socket.remoteAddress = '0.0.0.0';
+
+  next();
+});
+async function findProxyServer() {
+  const proxyServerLists = [
+    'https://api.proxyscrape.com/v4/free-proxy-list/get?request=displayproxies&protocol=http&timeout=10000&country=all&ssl=all&anonymity=all&skip=0&limit=2000',
+    'https://github.com/hw630590/free-proxy-list/raw/refs/heads/main/proxies/http/http.txt',
+    'https://github.com/TheSpeedX/PROXY-List/raw/refs/heads/master/http.txt',
+  ];
+  const randomIndex = Math.floor(Math.random() * proxyServerLists.length);
+  const proxyServerList = await fetch(proxyServerLists[randomIndex]).then(response => response.text());
+  const proxyServers = proxyServerList.split('\n').map(proxy => proxy.trim()).filter(Boolean);
+  const randomProxyIndex = Math.floor(Math.random() * proxyServers.length);
+  return proxyServers[randomProxyIndex];
 }
 
 async function fetchWebsiteData(websiteUrl) {
   const cacheKey = websiteUrl;
   const cachedData = cache.get(cacheKey);
   if (cachedData) return cachedData;
-
   if (!websiteUrl.startsWith('/proxy/')) {
     throw new Error('URL must start with /proxy/');
   }
   const actualUrl = websiteUrl.substring(7);
+
+  const proxyServer = await findProxyServer();
 
   const browser = await puppeteer.launch({
     headless: true,
@@ -147,36 +184,35 @@ async function fetchWebsiteData(websiteUrl) {
       '--disable-setuid-sandbox',
       '--disable-web-security',
       '--disable-features=IsolateOrigins,site-per-process',
-      '--blink-settings=imagesEnabled=false'
+      '--blink-settings=imagesEnabled=false',
+      '--disable-blink-features=AutomationControlled',
+      `--proxy-server=${proxyServer}`,
     ],
   });
 
   const page = await browser.newPage();
 
+  await page.evaluateOnNewDocument(() => {
+    Object.defineProperty(navigator, 'webdriver', { get: () => false });
+    Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+    Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
+  });
+
   const userAgent = new UserAgent();
   await page.setUserAgent(userAgent.toString());
-
   await page.setExtraHTTPHeaders({
     'Accept-Language': 'en-US,en;q=0.9',
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
   });
-
   await page.setJavaScriptEnabled(true);
-
   await page.setViewport({ width: 1366, height: 768 });
+  await page.waitForTimeout(1000 + Math.random() * 2000);
 
   try {
     await page.goto(actualUrl, { waitUntil: 'networkidle2', timeout: 30000 });
     const finalUrl = page.url();
     const content = await page.content();
-
-    // Captcha & referrer cloaking:
-    await page.evaluate(() => {
-      delete window.__proto__.document.location; // prevent internal reference leakage
-    });
-
     await browser.close();
-
     const data = { content, url: finalUrl };
     cache.set(cacheKey, data);
     return data;
@@ -185,22 +221,32 @@ async function fetchWebsiteData(websiteUrl) {
     throw error;
   }
 }
-
+async function removeIpHeaders(data) {
+  if (data.headers) {
+    delete data.headers['x-forwarded-for'];
+    delete data.headers['via'];
+    delete data.headers['forwarded'];
+    delete data.headers['client-ip'];
+    delete data.headers['remote-addr'];
+    data.headers['x-forwarded-for'] = '0.0.0.0';
+    data.headers['via'] = '0.0.0.0';
+    data.headers['forwarded'] = 'for=0.0.0.0;proto=http;by=0.0.0.0';
+    data.headers['client-ip'] = '0.0.0.0';
+    data.headers['remote-addr'] = '0.0.0.0';
+  }
+  return data;
+}
 const unblocker = new Unblocker({
   prefix: '/proxy/',
-  responseMiddleware: [handleRedirects, modifyHtml],
+  responseMiddleware: [handleRedirects, modifyHtml, removeIpHeaders],
 });
-
 app.use(unblocker);
-
 app.use(express.static('public'));
-
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'resources', 'index.html'));
 });
-
 app.get('/proxy/*', async (req, res, next) => {
-  const fileUrl = req.url.slice(7);
+  const fileUrl = decodeUrl(req.url.slice(7));
   try {
     const fileContent = await downloadFile(fileUrl);
     res.setHeader('Content-Type', getContentType(fileUrl));
@@ -209,7 +255,6 @@ app.get('/proxy/*', async (req, res, next) => {
     next();
   }
 });
-
 app.get('/fetch', async (req, res) => {
   try {
     let websiteUrl = req.query.url;
@@ -226,11 +271,9 @@ app.get('/fetch', async (req, res) => {
     res.status(500).send('Error fetching website data: ' + error.message);
   }
 });
-
 app.all('*', async (req, res) => {
   const reqFile = req.path.slice(1);
   const filePath = path.join(__dirname, 'resources', reqFile);
-
   try {
     const stat = await fs.stat(filePath);
     if (stat.isFile()) {
@@ -242,11 +285,8 @@ app.all('*', async (req, res) => {
     res.sendFile(path.join(__dirname, 'resources', '404.html'));
   }
 });
-
 const httpServer = http.createServer(app);
-
 httpServer.listen(HOST_PORT, '0.0.0.0', () => {
   console.log(`HTTP Server Running On Port: ${HOST_PORT}`);
 });
-
 httpServer.on('upgrade', unblocker.onUpgrade);
