@@ -12,6 +12,9 @@ const UserAgent = require('user-agents');
 const path = require('path');
 const fetch = require('node-fetch');
 const fs = require('fs').promises;
+
+const agent = new https.Agent({ rejectUnauthorized: false });
+
 const app = express();
 const cache = new NodeCache({ stdTTL: 300, checkperiod: 120, useClones: false });
 const fileCache = new NodeCache({ stdTTL: 3600, checkperiod: 600, useClones: false });
@@ -24,20 +27,31 @@ async function downloadFile(fileUrl) {
   const cachedFile = fileCache.get(cacheKey);
   if (cachedFile) return cachedFile;
   return new Promise((resolve, reject) => {
-    const protocol = fileUrl.startsWith('https') ? https : http;
-    protocol.get(fileUrl, (response) => {
-      if (response.statusCode === 200) {
-        const chunks = [];
-        response.on('data', (chunk) => { chunks.push(chunk); });
-        response.on('end', () => {
-          const data = Buffer.concat(chunks);
-          fileCache.set(cacheKey, data);
-          resolve(data);
-        });
-      } else {
-        reject(new Error(`Failed to download file: ${fileUrl} (Status ${response.statusCode})`));
-      }
-    }).on('error', reject);
+    try {
+      const protocol = fileUrl.startsWith('https') ? https : http;
+      const options = { agent, timeout: 15000 };
+      const req = protocol.get(fileUrl, options, (response) => {
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          const chunks = [];
+          response.on('data', (chunk) => chunks.push(chunk));
+          response.on('end', () => {
+            const data = Buffer.concat(chunks);
+            fileCache.set(cacheKey, data);
+            resolve(data);
+          });
+        } else if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+          downloadFile(url.resolve(fileUrl, response.headers.location)).then(resolve).catch(reject);
+        } else {
+          reject(new Error(`Failed to download file: ${fileUrl} (Status ${response.statusCode})`));
+        }
+      });
+      req.on('error', reject);
+      req.on('timeout', () => {
+        req.destroy(new Error('Request timed out'));
+      });
+    } catch (err) {
+      reject(err);
+    }
   });
 }
 async function downloadAllFiles(baseUrl, html) {
@@ -224,7 +238,7 @@ async function findProxyServer() {
     'https://github.com/TheSpeedX/PROXY-List/raw/refs/heads/master/http.txt',
   ];
   const randomIndex = Math.floor(Math.random() * proxyServerLists.length);
-  const proxyServerList = await fetch(proxyServerLists[randomIndex]).then(response => response.text());
+  const proxyServerList = await fetch(proxyServerLists[randomIndex], { agent }).then(response => response.text());
   const proxyServers = proxyServerList.split('\n').map(proxy => proxy.trim()).filter(Boolean);
   const randomProxyIndex = Math.floor(Math.random() * proxyServers.length);
   return proxyServers[randomProxyIndex];
@@ -313,7 +327,7 @@ app.get('/proxy/*', async (req, res, next) => {
   const fileUrl = decodeUrl(req.url.slice(7));
   try {
     const fileContent = await downloadFile(fileUrl);
-    res.setHeader('Content-Type', getContentType(fileUrl));
+    res.setHeader('Content-Type', require('mime-types').lookup(fileUrl) || 'application/octet-stream');
     res.send(fileContent);
   } catch (error) {
     next();
