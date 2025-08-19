@@ -1,6 +1,5 @@
 {
   "name": "notta-browser",
-  "version": "1.2.0",
   "main": "app.js",
   "scripts": {
     "start": "node app.js"
@@ -23,6 +22,7 @@
     "puppeteer-extra": "^3.3.5",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
     "unblocker": "^2.3.0",
-    "user-agents": "^1.1.325"
+    "user-agents": "^1.1.325",
+    "mime-types": "^2.1.35"
   }
 }
