@@ -5,7 +5,9 @@ const http = require('http');
 const https = require('https');
 const NodeCache = require('node-cache');
 const cheerio = require('cheerio');
-const puppeteer = require('puppeteer');
+const puppeteerExtra = require('puppeteer-extra');
+const StealthPlugin = require('puppeteer-extra-plugin-stealth');
+puppeteerExtra.use(StealthPlugin());
 const UserAgent = require('user-agents');
 const path = require('path');
 const fetch = require('node-fetch');
@@ -54,20 +56,59 @@ async function downloadAllFiles(baseUrl, html) {
   }
   await Promise.all(downloads);
 }
-async function handleRedirects(data) {
-  if (data.headers && data.headers.location) {
-    const location = decodeUrl(data.headers.location);
-    const parsed = url.parse(location);
-    if (!location.startsWith('/proxy/')) {
-      if (parsed.protocol) {
-        data.headers.location = '/proxy/' + location;
-      } else {
-        data.headers.location = '/proxy/' + url.resolve(data.url, location);
-      }
-    }
+
+function normalizeProxyUrl(u) {
+  if (!u) return u;
+  while (/^https?:\/\/[^/]+\/proxy\//i.test(u)) {
+    u = u.replace(/^https?:\/\/[^/]+\/proxy\//i, '');
   }
-  return data;
+  if (!u.startsWith('/proxy/')) {
+    if (/^https?:\/\//i.test(u)) return '/proxy/' + u;
+    return '/proxy/' + u.replace(/^\/+/, '');
+  }
+  return u;
 }
+
+function wrapUrl(u, baseUrl = '') {
+  if (!u) return u;
+
+  u = normalizeProxyUrl(u);
+
+  if (u.startsWith('/proxy/')) return u;
+
+  if (/^https?:\/\//i.test(u)) return '/proxy/' + u;
+
+  try {
+    const parsedBase = new URL(baseUrl);
+    if (u.startsWith('//')) { 
+      return '/proxy:' + parsedBase.protocol + u.slice(2);
+    }
+    if (u.startsWith('/')) { 
+      return '/proxy/' + parsedBase.origin + u;
+    }
+    return '/proxy/' + url.resolve(baseUrl, u);
+  } catch (e) {
+    return '/proxy/' + u;
+  }
+}
+
+function handleRedirects(res, targetUrl) {
+  const location = res.headers.location;
+  if (location) {
+    res.headers.location = wrapUrl(location, targetUrl);
+  }
+}
+
+function sanitizeQueryLinks(u) {
+  try {
+    const decoded = decodeURIComponent(u);
+    if (decoded.includes('/proxy/')) {
+      return decoded.replace(/\/proxy\//g, '');
+    }
+  } catch(e) {}
+  return u;
+}
+
 async function modifyHtml(data) {
   if (data.contentType && data.contentType.includes('text/html') && data.content) {
     let content = Buffer.isBuffer(data.content) ? data.content.toString() : data.content;
@@ -88,45 +129,68 @@ async function modifyHtml(data) {
       ['href', 'src', 'action'].forEach(attr => {
         if (elem.attr(attr)) {
           let originalUrl = elem.attr(attr);
-          if (!originalUrl.startsWith('/proxy/') && !originalUrl.startsWith('javascript:') && !originalUrl.startsWith('data:')) {
+          originalUrl = sanitizeQueryLinks(originalUrl);
+          if (!originalUrl.startsWith('/proxy/') && 
+              !originalUrl.startsWith('javascript:') && 
+              !originalUrl.startsWith('data:')) {
             if (originalUrl.startsWith('http')) {
               elem.attr(attr, '/proxy/' + originalUrl);
             } else {
               elem.attr(attr, '/proxy/' + url.resolve(data.url, originalUrl));
             }
+          } else if (originalUrl.includes('%2Fproxy%2F')) {
+            elem.attr(attr, decodeURIComponent(originalUrl).replace('/proxy/', ''));
           }
         }
       });
     });
 
-    if (!$('base').length) $('head').prepend(`<base href="${data.url}">`);
+    if (!$('base').length) {
+      let baseUrl = data.url;
+      if (/tiktok\.com/.test(baseUrl) && !/^https?:\/\//.test(baseUrl)) {
+        baseUrl = 'https://www.tiktok.com';
+      } else {
+        const parsed = new URL(data.url);
+        baseUrl = parsed.origin;
+      }
+      $('head').prepend(`<base href="${baseUrl}/">`);
+    }
 
     $('body').append(`<script>
+    (function() {
+      function wrapUrl(u) {
+        if (!u) return u;
+        if (u.startsWith('/proxy/')) return u;
+        if (/^https?:\/\//i.test(u)) return '/proxy/' + u;
+        return '/proxy/' + u.replace(/^\/+/, '');
+      }
+
       const origFetch = window.fetch;
-      window.fetch = function(resource, init){
-        if(typeof resource === 'string' && !resource.startsWith('/proxy/')) {
-          resource = '/proxy/' + resource;
-        }
+      window.fetch = function(resource, init) {
+        if (typeof resource === 'string') resource = wrapUrl(resource);
         return origFetch(resource, init);
-      };
-      const wrapUrl = (url) => {
-        if(!url.startsWith('/proxy/')) return '/proxy/' + url;
-        return url;
       };
 
-      window.open = function(url){ if(url) window.location.href = wrapUrl(url); };
-      const origFetch = window.fetch;
-      window.fetch = function(resource, init){
-        if(typeof resource === 'string') resource = wrapUrl(resource);
-        return origFetch(resource, init);
-      };
       const origXhrOpen = XMLHttpRequest.prototype.open;
-      XMLHttpRequest.prototype.open = function(method,url,...args){
-        if(url) url = wrapUrl(url);
-        return origXhrOpen.call(this, method,url,...args);
+      XMLHttpRequest.prototype.open = function(method, url, ...args) {
+        url = wrapUrl(url);
+        return origXhrOpen.call(this, method, url, ...args);
       };
-      history.pushState = ((orig) => (state,title,url) => orig.call(history,state,title,wrapUrl(url)))(history.pushState);
-      history.replaceState = ((orig) => (state,title,url) => orig.call(history,state,title,wrapUrl(url)))(history.replaceState);
+
+      const origOpen = window.open;
+      window.open = function(url, ...args) {
+        if (url) url = wrapUrl(url);
+        return origOpen.call(this, url, ...args);
+      };
+
+      history.pushState = ((orig) => (state, title, url) =>
+        orig.call(history, state, title, wrapUrl(url))
+      )(history.pushState);
+
+      history.replaceState = ((orig) => (state, title, url) =>
+        orig.call(history, state, title, wrapUrl(url))
+      )(history.replaceState);
+    })();
     </script>`);
 
     data.content = $.html();
@@ -177,7 +241,7 @@ async function fetchWebsiteData(websiteUrl) {
 
   const proxyServer = await findProxyServer();
 
-  const browser = await puppeteer.launch({
+  const browser = await puppeteerExtra.launch({
     headless: true,
     args: [
       '--no-sandbox',
@@ -186,7 +250,7 @@ async function fetchWebsiteData(websiteUrl) {
       '--disable-features=IsolateOrigins,site-per-process',
       '--blink-settings=imagesEnabled=false',
       '--disable-blink-features=AutomationControlled',
-      `--proxy-server=${proxyServer}`,
+      ...(proxyServer ? [`--proxy-server=${proxyServer}`] : []),
     ],
   });
 
@@ -258,6 +322,9 @@ app.get('/proxy/*', async (req, res, next) => {
 app.get('/fetch', async (req, res) => {
   try {
     let websiteUrl = req.query.url;
+    if (/google\.com\/recaptcha/.test(websiteUrl)) {
+      return res.redirect(websiteUrl.replace(/^\/proxy\//, ''));
+    }
     if (!websiteUrl) {
       return res.status(400).send('URL parameter is required');
     }
