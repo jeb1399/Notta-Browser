@@ -18,7 +18,7 @@ const agent = new https.Agent({ rejectUnauthorized: false });
 const app = express();
 const cache = new NodeCache({ stdTTL: 300, checkperiod: 120, useClones: false });
 const fileCache = new NodeCache({ stdTTL: 3600, checkperiod: 600, useClones: false });
-const HOST_PORT = 80;
+const HOST_PORT = 8000;
 function decodeUrl(encodedUrl) {
   return decodeURIComponent(encodedUrl.replace(/\+/g, ' '));
 }
