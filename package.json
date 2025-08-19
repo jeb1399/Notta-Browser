@@ -5,13 +5,8 @@
     "start": "node app.js"
   },
   "keywords": [
-    "express",
     "unblocker",
-    "proxy",
-    "node",
-    "nextdns",
-    "puppeteer",
-    "cache"
+    "proxy"
   ],
   "dependencies": {
     "cheerio": "^1.0.0-rc.12",
