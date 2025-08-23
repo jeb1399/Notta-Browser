@@ -18,12 +18,10 @@ const agent = new https.Agent({ rejectUnauthorized: false });
 const app = express();
 const cache = new NodeCache({ stdTTL: 300, checkperiod: 120, useClones: false });
 const fileCache = new NodeCache({ stdTTL: 3600, checkperiod: 600, useClones: false });
-const HOST_PORT = 8000;
-
+const HOST_PORT = 80;
 function decodeUrl(encodedUrl) {
   return decodeURIComponent(encodedUrl.replace(/\+/g, ' '));
 }
-
 async function downloadFile(fileUrl) {
   const cacheKey = `file:${fileUrl}`;
   const cachedFile = fileCache.get(cacheKey);
@@ -56,7 +54,6 @@ async function downloadFile(fileUrl) {
     }
   });
 }
-
 async function downloadAllFiles(baseUrl, html) {
   const $ = cheerio.load(html);
   const filesToDownload = new Set();
@@ -97,10 +94,10 @@ function wrapUrl(u, baseUrl = '') {
 
   try {
     const parsedBase = new URL(baseUrl);
-    if (u.startsWith('//')) {
+    if (u.startsWith('//')) { 
       return '/proxy:' + parsedBase.protocol + u.slice(2);
     }
-    if (u.startsWith('/')) {
+    if (u.startsWith('/')) { 
       return '/proxy/' + parsedBase.origin + u;
     }
     return '/proxy/' + url.resolve(baseUrl, u);
@@ -122,47 +119,18 @@ function sanitizeQueryLinks(u) {
     if (decoded.includes('/proxy/')) {
       return decoded.replace(/\/proxy\//g, '');
     }
-  } catch (e) {}
+  } catch(e) {}
   return u;
 }
 
 async function modifyHtml(data) {
-  if (data.url && data.url.includes('recaptcha__en.js')) {
-    // Intercept and replace recaptcha__en.js with always-successful mock
-    data.statusCode = 200;
-    data.headers['content-type'] = 'application/javascript';
-    data.body = `var grecaptcha = (function() {
-      return {
-        ready: function(callback) {
-          if (typeof callback === 'function') {
-            callback();
-          }
-        },
-        execute: function(siteKey, options) {
-          return new Promise(function(resolve) {
-            resolve('mock-success-token');
-          });
-        },
-        render: function(container, params) {
-          return 1;
-        },
-        reset: function(widgetId) {},
-        getResponse: function(widgetId) {
-          return 'mock-success-token';
-        },
-      };
-    })();`;
-    data.stream = null;
-    return data;
-  }
-
   if (data.contentType && data.contentType.includes('text/html') && data.content) {
     let content = Buffer.isBuffer(data.content) ? data.content.toString() : data.content;
     const $ = cheerio.load(content);
 
     $('meta[http-equiv="Content-Security-Policy"]').remove();
 
-    $('meta[http-equiv="refresh"]').each(function () {
+    $('meta[http-equiv="refresh"]').each(function() {
       const meta = $(this);
       const contentAttr = meta.attr('content');
       if (contentAttr) {
@@ -170,17 +138,15 @@ async function modifyHtml(data) {
       }
     });
 
-    $('a, link, script, img, iframe, form, source').each(function () {
+    $('a, link, script, img, iframe, form, source').each(function() {
       const elem = $(this);
-      ['href', 'src', 'action'].forEach((attr) => {
+      ['href', 'src', 'action'].forEach(attr => {
         if (elem.attr(attr)) {
           let originalUrl = elem.attr(attr);
           originalUrl = sanitizeQueryLinks(originalUrl);
-          if (
-            !originalUrl.startsWith('/proxy/') &&
-            !originalUrl.startsWith('javascript:') &&
-            !originalUrl.startsWith('data:')
-          ) {
+          if (!originalUrl.startsWith('/proxy/') && 
+              !originalUrl.startsWith('javascript:') && 
+              !originalUrl.startsWith('data:')) {
             if (originalUrl.startsWith('http')) {
               elem.attr(attr, '/proxy/' + originalUrl);
             } else {
@@ -251,7 +217,6 @@ async function modifyHtml(data) {
   data.headers['Access-Control-Allow-Origin'] = '*';
   return data;
 }
-
 app.use((req, res, next) => {
   req.headers['x-forwarded-for'] = '0.0.0.0';
   req.headers['via'] = '0.0.0.0';
@@ -266,7 +231,6 @@ app.use((req, res, next) => {
 
   next();
 });
-
 async function findProxyServer() {
   const proxyServerLists = [
     'https://api.proxyscrape.com/v4/free-proxy-list/get?request=displayproxies&protocol=http&timeout=10000&country=all&ssl=all&anonymity=all&skip=0&limit=2000',
@@ -335,7 +299,6 @@ async function fetchWebsiteData(websiteUrl) {
     throw error;
   }
 }
-
 async function removeIpHeaders(data) {
   if (data.headers) {
     delete data.headers['x-forwarded-for'];
@@ -351,18 +314,15 @@ async function removeIpHeaders(data) {
   }
   return data;
 }
-
 const unblocker = new Unblocker({
   prefix: '/proxy/',
   responseMiddleware: [handleRedirects, modifyHtml, removeIpHeaders],
 });
 app.use(unblocker);
 app.use(express.static('public'));
-
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'resources', 'index.html'));
 });
-
 app.get('/proxy/*', async (req, res, next) => {
   const fileUrl = decodeUrl(req.url.slice(7));
   try {
@@ -373,12 +333,10 @@ app.get('/proxy/*', async (req, res, next) => {
     next();
   }
 });
-
 app.get('/fetch', async (req, res) => {
   try {
     let websiteUrl = req.query.url;
     if (/google\.com\/recaptcha/.test(websiteUrl)) {
-      // Instead of proxying the recaptcha js, redirect to real to avoid complications
       return res.redirect(websiteUrl.replace(/^\/proxy\//, ''));
     }
     if (!websiteUrl) {
@@ -394,7 +352,6 @@ app.get('/fetch', async (req, res) => {
     res.status(500).send('Error fetching website data: ' + error.message);
   }
 });
-
 app.all('*', async (req, res) => {
   const reqFile = req.path.slice(1);
   const filePath = path.join(__dirname, 'resources', reqFile);
@@ -409,7 +366,6 @@ app.all('*', async (req, res) => {
     res.sendFile(path.join(__dirname, 'resources', '404.html'));
   }
 });
-
 const httpServer = http.createServer(app);
 httpServer.listen(HOST_PORT, '0.0.0.0', () => {
   console.log(`HTTP Server Running On Port: ${HOST_PORT}`);
