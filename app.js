@@ -12,13 +12,11 @@ const UserAgent = require('user-agents');
 const path = require('path');
 const fetch = require('node-fetch');
 const fs = require('fs').promises;
-
-const agent = new https.Agent({ rejectUnauthorized: false });
-
+const mime = require('mime-types');
 const app = express();
 const cache = new NodeCache({ stdTTL: 300, checkperiod: 120, useClones: false });
 const fileCache = new NodeCache({ stdTTL: 3600, checkperiod: 600, useClones: false });
-const HOST_PORT = 80;
+const HOST_PORT = 8080;
 function decodeUrl(encodedUrl) {
   return decodeURIComponent(encodedUrl.replace(/\+/g, ' '));
 }
@@ -27,31 +25,25 @@ async function downloadFile(fileUrl) {
   const cachedFile = fileCache.get(cacheKey);
   if (cachedFile) return cachedFile;
   return new Promise((resolve, reject) => {
-    try {
-      const protocol = fileUrl.startsWith('https') ? https : http;
-      const options = { agent, timeout: 15000 };
-      const req = protocol.get(fileUrl, options, (response) => {
-        if (response.statusCode >= 200 && response.statusCode < 300) {
-          const chunks = [];
-          response.on('data', (chunk) => chunks.push(chunk));
-          response.on('end', () => {
-            const data = Buffer.concat(chunks);
-            fileCache.set(cacheKey, data);
-            resolve(data);
-          });
-        } else if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
-          downloadFile(url.resolve(fileUrl, response.headers.location)).then(resolve).catch(reject);
-        } else {
-          reject(new Error(`Failed to download file: ${fileUrl} (Status ${response.statusCode})`));
-        }
-      });
-      req.on('error', reject);
-      req.on('timeout', () => {
-        req.destroy(new Error('Request timed out'));
-      });
-    } catch (err) {
-      reject(err);
-    }
+    const protocol = fileUrl.startsWith('https') ? https : http;
+    const options = { timeout: 15000 };
+    const req = protocol.get(fileUrl, options, (response) => {
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        const chunks = [];
+        response.on('data', (chunk) => chunks.push(chunk));
+        response.on('end', () => {
+          const data = Buffer.concat(chunks);
+          fileCache.set(cacheKey, data);
+          resolve(data);
+        });
+      } else if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+        downloadFile(url.resolve(fileUrl, response.headers.location)).then(resolve).catch(reject);
+      } else {
+        reject(new Error(`Failed to download file: ${fileUrl} (Status ${response.statusCode})`));
+      }
+    });
+    req.on('error', reject);
+    req.on('timeout', () => req.destroy(new Error('Request timed out')));
   });
 }
 async function downloadAllFiles(baseUrl, html) {
@@ -70,7 +62,6 @@ async function downloadAllFiles(baseUrl, html) {
   }
   await Promise.all(downloads);
 }
-
 function normalizeProxyUrl(u) {
   if (!u) return u;
   while (/^https?:\/\/[^/]+\/proxy\//i.test(u)) {
@@ -82,22 +73,17 @@ function normalizeProxyUrl(u) {
   }
   return u;
 }
-
 function wrapUrl(u, baseUrl = '') {
   if (!u) return u;
-
   u = normalizeProxyUrl(u);
-
   if (u.startsWith('/proxy/')) return u;
-
   if (/^https?:\/\//i.test(u)) return '/proxy/' + u;
-
   try {
     const parsedBase = new URL(baseUrl);
-    if (u.startsWith('//')) { 
+    if (u.startsWith('//')) {
       return '/proxy:' + parsedBase.protocol + u.slice(2);
     }
-    if (u.startsWith('/')) { 
+    if (u.startsWith('/')) {
       return '/proxy/' + parsedBase.origin + u;
     }
     return '/proxy/' + url.resolve(baseUrl, u);
@@ -105,14 +91,12 @@ function wrapUrl(u, baseUrl = '') {
     return '/proxy/' + u;
   }
 }
-
 function handleRedirects(res, targetUrl) {
   const location = res.headers.location;
   if (location) {
     res.headers.location = wrapUrl(location, targetUrl);
   }
 }
-
 function sanitizeQueryLinks(u) {
   try {
     const decoded = decodeURIComponent(u);
@@ -122,14 +106,11 @@ function sanitizeQueryLinks(u) {
   } catch(e) {}
   return u;
 }
-
 async function modifyHtml(data) {
   if (data.contentType && data.contentType.includes('text/html') && data.content) {
     let content = Buffer.isBuffer(data.content) ? data.content.toString() : data.content;
     const $ = cheerio.load(content);
-
     $('meta[http-equiv="Content-Security-Policy"]').remove();
-
     $('meta[http-equiv="refresh"]').each(function() {
       const meta = $(this);
       const contentAttr = meta.attr('content');
@@ -137,15 +118,14 @@ async function modifyHtml(data) {
         meta.attr('content', contentAttr.replace(/url=(.+)/i, (_, urlPart) => `url=/proxy/${url.resolve(data.url, urlPart)}`));
       }
     });
-
     $('a, link, script, img, iframe, form, source').each(function() {
       const elem = $(this);
       ['href', 'src', 'action'].forEach(attr => {
         if (elem.attr(attr)) {
           let originalUrl = elem.attr(attr);
           originalUrl = sanitizeQueryLinks(originalUrl);
-          if (!originalUrl.startsWith('/proxy/') && 
-              !originalUrl.startsWith('javascript:') && 
+          if (!originalUrl.startsWith('/proxy/') &&
+              !originalUrl.startsWith('javascript:') &&
               !originalUrl.startsWith('data:')) {
             if (originalUrl.startsWith('http')) {
               elem.attr(attr, '/proxy/' + originalUrl);
@@ -158,7 +138,6 @@ async function modifyHtml(data) {
         }
       });
     });
-
     if (!$('base').length) {
       let baseUrl = data.url;
       if (/tiktok\.com/.test(baseUrl) && !/^https?:\/\//.test(baseUrl)) {
@@ -169,7 +148,6 @@ async function modifyHtml(data) {
       }
       $('head').prepend(`<base href="${baseUrl}/">`);
     }
-
     $('body').append(`<script>
     (function() {
       function wrapUrl(u) {
@@ -178,39 +156,32 @@ async function modifyHtml(data) {
         if (/^https?:\/\//i.test(u)) return '/proxy/' + u;
         return '/proxy/' + u.replace(/^\/+/, '');
       }
-
       const origFetch = window.fetch;
       window.fetch = function(resource, init) {
         if (typeof resource === 'string') resource = wrapUrl(resource);
         return origFetch(resource, init);
       };
-
       const origXhrOpen = XMLHttpRequest.prototype.open;
       XMLHttpRequest.prototype.open = function(method, url, ...args) {
         url = wrapUrl(url);
         return origXhrOpen.call(this, method, url, ...args);
       };
-
       const origOpen = window.open;
       window.open = function(url, ...args) {
         if (url) url = wrapUrl(url);
         return origOpen.call(this, url, ...args);
       };
-
       history.pushState = ((orig) => (state, title, url) =>
         orig.call(history, state, title, wrapUrl(url))
       )(history.pushState);
-
       history.replaceState = ((orig) => (state, title, url) =>
         orig.call(history, state, title, wrapUrl(url))
       )(history.replaceState);
     })();
     </script>`);
-
     data.content = $.html();
     await downloadAllFiles(data.url, data.content);
   }
-
   if (!data.headers) data.headers = {};
   data.headers['Content-Security-Policy'] = "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;";
   data.headers['X-Frame-Options'] = 'ALLOWALL';
@@ -218,17 +189,6 @@ async function modifyHtml(data) {
   return data;
 }
 app.use((req, res, next) => {
-  req.headers['x-forwarded-for'] = '0.0.0.0';
-  req.headers['via'] = '0.0.0.0';
-  req.headers['forwarded'] = 'for=0.0.0.0;proto=http;by=0.0.0.0';
-  req.headers['client-ip'] = '0.0.0.0';
-  req.headers['remote-addr'] = '0.0.0.0';
-
-  if (req.connection) req.connection.remoteAddress = '0.0.0.0';
-  if (req.socket) req.socket.remoteAddress = '0.0.0.0';
-  if (req.connection && req.connection.socket)
-    req.connection.socket.remoteAddress = '0.0.0.0';
-
   next();
 });
 async function findProxyServer() {
@@ -238,12 +198,11 @@ async function findProxyServer() {
     'https://github.com/TheSpeedX/PROXY-List/raw/refs/heads/master/http.txt',
   ];
   const randomIndex = Math.floor(Math.random() * proxyServerLists.length);
-  const proxyServerList = await fetch(proxyServerLists[randomIndex], { agent }).then(response => response.text());
+  const proxyServerList = await fetch(proxyServerLists[randomIndex]).then(response => response.text());
   const proxyServers = proxyServerList.split('\n').map(proxy => proxy.trim()).filter(Boolean);
   const randomProxyIndex = Math.floor(Math.random() * proxyServers.length);
   return proxyServers[randomProxyIndex];
 }
-
 async function fetchWebsiteData(websiteUrl) {
   const cacheKey = websiteUrl;
   const cachedData = cache.get(cacheKey);
@@ -252,9 +211,7 @@ async function fetchWebsiteData(websiteUrl) {
     throw new Error('URL must start with /proxy/');
   }
   const actualUrl = websiteUrl.substring(7);
-
   const proxyServer = await findProxyServer();
-
   const browser = await puppeteerExtra.launch({
     headless: true,
     args: [
@@ -267,15 +224,12 @@ async function fetchWebsiteData(websiteUrl) {
       ...(proxyServer ? [`--proxy-server=${proxyServer}`] : []),
     ],
   });
-
   const page = await browser.newPage();
-
   await page.evaluateOnNewDocument(() => {
     Object.defineProperty(navigator, 'webdriver', { get: () => false });
     Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
     Object.defineProperty(navigator, 'languages', { get: () => ['en-US', 'en'] });
   });
-
   const userAgent = new UserAgent();
   await page.setUserAgent(userAgent.toString());
   await page.setExtraHTTPHeaders({
@@ -285,7 +239,6 @@ async function fetchWebsiteData(websiteUrl) {
   await page.setJavaScriptEnabled(true);
   await page.setViewport({ width: 1366, height: 768 });
   await page.waitForTimeout(1000 + Math.random() * 2000);
-
   try {
     await page.goto(actualUrl, { waitUntil: 'networkidle2', timeout: 30000 });
     const finalUrl = page.url();
@@ -306,11 +259,6 @@ async function removeIpHeaders(data) {
     delete data.headers['forwarded'];
     delete data.headers['client-ip'];
     delete data.headers['remote-addr'];
-    data.headers['x-forwarded-for'] = '0.0.0.0';
-    data.headers['via'] = '0.0.0.0';
-    data.headers['forwarded'] = 'for=0.0.0.0;proto=http;by=0.0.0.0';
-    data.headers['client-ip'] = '0.0.0.0';
-    data.headers['remote-addr'] = '0.0.0.0';
   }
   return data;
 }
@@ -323,11 +271,11 @@ app.use(express.static('public'));
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'resources', 'index.html'));
 });
-app.get('/proxy/*', async (req, res, next) => {
-  const fileUrl = decodeUrl(req.url.slice(7));
+app.get(/^\/proxy\/(.+)/, async (req, res, next) => {
+  const fileUrl = decodeUrl(req.params[0]);
   try {
     const fileContent = await downloadFile(fileUrl);
-    res.setHeader('Content-Type', require('mime-types').lookup(fileUrl) || 'application/octet-stream');
+    res.setHeader('Content-Type', mime.lookup(fileUrl) || 'application/octet-stream');
     res.send(fileContent);
   } catch (error) {
     next();
@@ -336,13 +284,13 @@ app.get('/proxy/*', async (req, res, next) => {
 app.get('/fetch', async (req, res) => {
   try {
     let websiteUrl = req.query.url;
-    if (/google\.com\/recaptcha/.test(websiteUrl)) {
-      return res.redirect(websiteUrl.replace(/^\/proxy\//, ''));
-    }
     if (!websiteUrl) {
       return res.status(400).send('URL parameter is required');
     }
     websiteUrl = decodeUrl(websiteUrl);
+    if (/google\.com\/recaptcha/.test(websiteUrl)) {
+      return res.redirect('/proxy/' + (websiteUrl.startsWith('http') ? websiteUrl : 'http://' + websiteUrl));
+    }
     if (!websiteUrl.startsWith('/proxy/')) {
       websiteUrl = '/proxy/' + (websiteUrl.startsWith('http') ? websiteUrl : 'http://' + websiteUrl);
     }
@@ -352,8 +300,8 @@ app.get('/fetch', async (req, res) => {
     res.status(500).send('Error fetching website data: ' + error.message);
   }
 });
-app.all('*', async (req, res) => {
-  const reqFile = req.path.slice(1);
+app.all(/.*/, async (req, res) => {
+  const reqFile = req.path.slice(1).replace(/\.\./g, '').replace(/^\/+/, '');
   const filePath = path.join(__dirname, 'resources', reqFile);
   try {
     const stat = await fs.stat(filePath);
